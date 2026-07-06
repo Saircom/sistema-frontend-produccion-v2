@@ -1,0 +1,49 @@
+{
+  "name": "saircom-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "start": "serve -s dist"
+  },
+  "dependencies": {
+    "@capacitor/android": "6.2.0",
+    "@capacitor/cli": "6.2.0",
+    "@capacitor/core": "6.2.0",
+    "@tailwindcss/vite": "^4.1.18",
+    "axios": "^1.7.9",
+    "chart.js": "^4.4.7",
+    "date-fns": "^4.4.0",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4",
+    "jwt-decode": "^4.0.0",
+    "lucide-react": "^0.474.0",
+    "react": "^18.3.1",
+    "react-chartjs-2": "^5.3.0",
+    "react-csv": "^2.2.2",
+    "react-data-table-component": "^7.6.2",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.1.1",
+    "react-signature-canvas": "^1.0.7",
+    "socket.io-client": "^4.8.1",
+    "sweetalert2": "^11.15.10",
+    "tailwindcss": "^4.1.18"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.15.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.15.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.14",
+    "globals": "^15.12.0",
+    "serve": "^14.2.4",
+    "vite": "^6.0.1"
+  }
+}
