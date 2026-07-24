@@ -15,7 +15,7 @@ import Perfil from './Usuarios/Perfil';
 import Login from '../home/Login';
 import Inicio from '../home/Inicio';
 import Clientes from './clientes/Clientes';
-import EquipoClientes from './clientes/Equipos';
+import EquipoClientes from './clientes/Equipos.jsx';
 import { ClienteEquiposDetalle } from './clientes/ClienteEquiposDetalle';
 import Notificaciones from '../services/Notificaciones';
 import Usuarios from './Usuarios/Usuarios';
