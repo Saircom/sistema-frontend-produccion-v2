@@ -9,14 +9,14 @@ import ProtectedRoute from '../components/protectedRoute';
 import NotFound from './NotFound';
 import Loading from '../components/Loading';
 import Accessdenied from '../components/Accessdenied';
-import Perfil from './usuarios/Perfil.jsx';
+import Perfil from './Usuarios/Perfil.jsx';
 
 // Vistas
 import Login from '../home/Login';
 import Inicio from '../home/Inicio';
 import Clientes from './clientes/Clientes';
-import EquipoClientes from './Clientes/Equipos';
-import { ClienteEquiposDetalle } from './Clientes/ClienteEquiposDetalle';
+import EquipoClientes from './clientes/Equipos';
+import { ClienteEquiposDetalle } from './clientes/ClienteEquiposDetalle';
 import Notificaciones from '../services/Notificaciones';
 import Usuarios from './Usuarios/Usuarios';
 import DashboardAdministrador from './dashboard/administrador/Dashboard';
