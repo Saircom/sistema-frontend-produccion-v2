@@ -4,7 +4,7 @@ import { useAuth } from '../../context/authContext.jsx';
 import { UsuarioService } from '../../services/user.service.js';
 import { notify } from '../../utils/notifications.jsx';
 
-const Perfil = () => {
+export const Perfil = () => {
   const { user, refreshUser } = useAuth();
   const [perfil, setPerfil] = useState({ nombres: '', apellidos: '', correo: '', dni: '', nombre_rol: '' });
   const [passwords, setPasswords] = useState({ password_actual: '', password_nueva: '', confirmar: '' });
