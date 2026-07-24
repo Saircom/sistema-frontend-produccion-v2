@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
+/* eslint-disable react/prop-types */
+import { useEffect, useState, useMemo } from 'react';
 import { Trash2, UserPlus, Save } from 'lucide-react';
 import { movilidadService } from '../../services/movilidad.service';
 
@@ -7,13 +8,12 @@ export const AsignacionForm = ({ tecnicos, liderInicial = "", movilidadInicial =
     const [movilidad, setMovilidad] = useState(String(movilidadInicial ?? ""));
     const [apoyo, setApoyo] = useState(apoyoInicial.map(String));
     const [movilidades, setMovilidades] = useState([]);
+    const tecnicosValidos = useMemo(() => tecnicos.filter(t => (
+        String(t?.nombre_rol ?? t?.rol ?? '').trim().toUpperCase() === 'TECNICO'
+        && Number(t?.estado) === 1
+    )), [tecnicos]);
 
     // Filtra técnicos que ya fueron seleccionados para evitar duplicados
-    const tecnicosDisponibles = useMemo(() => {
-        const seleccionados = new Set([...apoyo, lider]);
-        return tecnicos.filter(t => !seleccionados.has(String(t.id_usuario)) || t.id_usuario == lider);
-    }, [tecnicos, lider, apoyo]);
-
     const agregarApoyo = () => setApoyo([...apoyo, ""]);
 
     const actualizarApoyo = (index, value) => {
@@ -51,7 +51,7 @@ export const AsignacionForm = ({ tecnicos, liderInicial = "", movilidadInicial =
                         className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
                     >
                         <option value="">Seleccione un líder...</option>
-                        {tecnicos.map(t => (
+                        {tecnicosValidos.map(t => (
                             <option key={t.id_usuario} value={t.id_usuario}>{t.nombres} {t.apellidos}</option>
                         ))}
                     </select>
@@ -75,8 +75,11 @@ export const AsignacionForm = ({ tecnicos, liderInicial = "", movilidadInicial =
                                     className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none"
                                 >
                                     <option value="">Seleccione técnico...</option>
-                                    {tecnicos.map(t => (
-                                        <option key={t.id_usuario} value={t.id_usuario} disabled={t.id_usuario == lider}>
+                                    {tecnicosValidos.map(t => (
+                                        <option key={t.id_usuario} value={t.id_usuario} disabled={
+                                            String(t.id_usuario) === String(lider)
+                                            || apoyo.some((id, i) => i !== index && String(id) === String(t.id_usuario))
+                                        }>
                                             {t.nombres} {t.apellidos}
                                         </option>
                                     ))}

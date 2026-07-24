@@ -5,10 +5,9 @@ import {
     lecturas_secador,
     voltyampFields,
     tecnicosFields,
-    obtenerComponentesPorServicio
+    filtros_y_componentes // Se mantiene la importación
 } from "../Data";
 
-// Componente atómico optimizado con React.memo para evitar re-renders innecesarios
 const InfoDisplay = React.memo(({ label, value }) => (
     <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
         <label className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
@@ -27,7 +26,6 @@ function EstacionarioForm({ formData = {}, handleChange, handleSubmit, isSaving 
         console.log("DEBUG - Datos recibidos en formulario:", formData);
     }, [formData]);
 
-    // Aplanamos de forma segura cubriendo casos donde sea un array o ya venga plano
     const flatFormData = useMemo(() => {
         if (!formData) return {};
 
@@ -46,28 +44,15 @@ function EstacionarioForm({ formData = {}, handleChange, handleSubmit, isSaving 
         };
     }, [formData]);
 
-    const marca = flatFormData?.equipo_marca || flatFormData?.marca || "";
+    // Se eliminó la lógica de marca/tipoMantenimiento y la dependencia de obtenerComponentesPorServicio
 
-    const tipoMantenimiento = useMemo(() => {
-        let raw = flatFormData?.tipoServicio || flatFormData?.tipo_servicio || "";
-        if (typeof raw !== 'string') return "";
-
-        return raw.split("-")[1]?.replace(/_/g, " ").trim() || "";
-    }, [flatFormData]);
-
-    const camposChecklist = useMemo(() => {
-        if (!marca || !tipoMantenimiento) return [];
-        return obtenerComponentesPorServicio(marca, tipoMantenimiento);
-    }, [marca, tipoMantenimiento]);
-
-    // Se eliminó la re-declaración dinámica en el render. Ahora es estático y eficiente.
     const secciones = useMemo(() => [
         { id: "compresor", title: "Lecturas del Compresor", fields: lecturas_compresor, cols: "grid-cols-1 md:grid-cols-4" },
         { id: "secador", title: "Parámetros del Secador", fields: lecturas_secador, cols: "grid-cols-1 md:grid-cols-2" },
         { id: "electricos", title: "Voltaje y Amperaje", fields: voltyampFields, cols: "grid-cols-1 sm:grid-cols-3" },
-        { id: "checklist", title: "Actividades Realizadas", fields: camposChecklist, cols: "grid-cols-1 md:grid-cols-2" },
+        { id: "checklist", title: "Actividades Realizadas", fields: filtros_y_componentes, cols: "grid-cols-1 md:grid-cols-2" }, // Se usa la constante directamente
         { id: "informe", title: "Informe Técnico", fields: tecnicosFields, cols: "grid-cols-1" }
-    ], [camposChecklist]);
+    ], []); // Lista de dependencias vacía ya que ahora es estático
 
     return (
         <div className="">
@@ -76,11 +61,11 @@ function EstacionarioForm({ formData = {}, handleChange, handleSubmit, isSaving 
                     <div key={seccion.id} className="">
                         <Section title={seccion.title}>
                             <Grid
-                                fields={seccion.id === "checklist" ? camposChecklist : seccion.fields}
+                                fields={seccion.fields} // Ya no es necesario el condicional ternario
                                 formData={flatFormData}
                                 handleChange={handleChange}
                                 cols={seccion.cols}
-                                sectionId={seccion.id} // 👈 Esto le grita a la Grid qué sección se está pintando
+                                sectionId={seccion.id}
                             />
                         </Section>
                     </div>

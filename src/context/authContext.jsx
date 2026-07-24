@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect } from "react";
+/* eslint-disable react/prop-types, react-refresh/only-export-components */
+import { createContext, useState, useContext, useEffect } from "react";
 import AuthService from "../services/auth.service"; 
 
 const AuthContext = createContext(undefined);
@@ -63,12 +64,18 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const refreshUser = async () => {
+        const data = await AuthService.validateToken();
+        if (data?.usuario) setUser(formatUser(data));
+        return data?.usuario;
+    };
+
     if (loading) return <div className="loading">Cargando sistema...</div>;
 
     // Solo exportamos lo necesario. Nota: eliminamos 'setUser' del value 
     // para evitar mutaciones directas del estado desde componentes hijos.
     return (
-        <AuthContext.Provider value={{ user, login, logout }}>
+        <AuthContext.Provider value={{ user, login, logout, refreshUser }}>
             {children}
         </AuthContext.Provider>
     );

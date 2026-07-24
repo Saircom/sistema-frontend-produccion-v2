@@ -5,9 +5,9 @@ export const DashboardService = {
      * 1. Obtiene las métricas generales de todos los servicios (Admin / Supervisor)
      * @returns {Promise<Array>} Lista de todos los servicios
      */
-    obtenerDatosDashboard: async () => {
+    obtenerDatosDashboard: async (filtros = {}) => {
         try {
-            const response = await api.get('/dashboard/stats');
+            const response = await api.get('/dashboard/stats', { params: filtros });
             return response.data || response; 
         } catch (error) {
             console.error("Error en DashboardService.obtenerDatosDashboard (Frontend):", error.message);

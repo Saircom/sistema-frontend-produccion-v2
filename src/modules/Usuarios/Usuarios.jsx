@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { UserPlus, Pencil, Trash2, Search } from "lucide-react";
-import Loading from "../../components/Loading";
+import Loading from "../../components/Loading.jsx";
 import { UsuarioService } from "../../services/user.service.js";
 import { RolService } from "../../services/role.service.js";
-import { notify } from "../../utils/notifications";
-import Modal from "../../components/ui/Modal";
-import UsuarioForm from "../../components/forms/UsuarioForm";
+import { notify } from "../../utils/notifications.jsx";
+import Modal from "../../components/ui/Modal.jsx";
+import UsuarioForm from "../../components/forms/UsuarioForm.jsx";
 import Pagination from "../../components/Pagination.jsx";
+import { useAuth } from "../../context/authContext.jsx";
+import { isSuperAdmin } from "../../utils/permissions.js";
 
 const INITIAL_USER_STATE = {
   id_usuario: "",
@@ -20,8 +22,13 @@ const INITIAL_USER_STATE = {
 };
 
 function Usuarios() {
+  const { user } = useAuth();
+  const puedeRestablecerPasswords = isSuperAdmin(user);
   const [listausuarios, setListausuarios] = useState([]);
   const [roles, setRoles] = useState([]);
+  const rolesPermitidos = puedeRestablecerPasswords
+    ? roles
+    : roles.filter(rol => !isSuperAdmin(rol.nombre_rol));
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -43,7 +50,7 @@ function Usuarios() {
       ]);
       setListausuarios(Array.isArray(usuarios) ? usuarios : (usuarios.data || []));
       setRoles(Array.isArray(rolesList) ? rolesList : (rolesList.data || []));
-    } catch (error) {
+    } catch {
       notify.error("Error", "No se pudo cargar la información inicial");
     } finally {
       setCargando(false);
@@ -71,7 +78,7 @@ function Usuarios() {
 
     if (modoEdicion) {
       payload.id_usuario = usuarioForm.id_usuario;
-      if (!payload.password) delete payload.password;
+      if (!puedeRestablecerPasswords || !payload.password) delete payload.password;
     }
 
     try {
@@ -84,7 +91,7 @@ function Usuarios() {
       }
       setIsModalOpen(false);
       leerServicio();
-    } catch (error) {
+    } catch {
       notify.error("Error", "No se pudo guardar el usuario");
     } finally {
       setSubmitting(false);
@@ -98,7 +105,7 @@ function Usuarios() {
         await UsuarioService.delete(id);
         notify.success("Eliminado", "El usuario ha sido borrado.");
         leerServicio();
-      } catch (error) {
+      } catch {
         notify.error("Error", "No se pudo eliminar el registro");
       }
     }
@@ -178,8 +185,10 @@ function Usuarios() {
                         <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-full text-[10px] font-black uppercase">{u.nombre_rol}</span>
                       </td>
                       <td className="px-2 py-2 text-right">
-                        <button onClick={() => { setUsuarioForm({ ...u, password: "" }); setModoEdicion(true); setIsModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-600"><Pencil size={18} /></button>
-                        <button onClick={() => eliminarUsuario(u.id_usuario)} className="p-2 text-slate-400 hover:text-red-600"><Trash2 size={18} /></button>
+                        {(puedeRestablecerPasswords || !isSuperAdmin(u.nombre_rol)) && <>
+                          <button onClick={() => { setUsuarioForm({ ...u, password: "" }); setModoEdicion(true); setIsModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-600" aria-label={`Editar a ${u.nombres}`}><Pencil size={18} /></button>
+                          <button onClick={() => eliminarUsuario(u.id_usuario)} className="p-2 text-slate-400 hover:text-red-600" aria-label={`Eliminar a ${u.nombres}`}><Trash2 size={18} /></button>
+                        </>}
                       </td>
                     </tr>
                   ))}
@@ -215,7 +224,8 @@ function Usuarios() {
               formData={usuarioForm}
               onChange={manejarFormChange}
               esEdicion={modoEdicion}
-              roles={roles}
+              puedeEditarPassword={puedeRestablecerPasswords}
+              roles={rolesPermitidos}
             />
           </form>
         </Modal>

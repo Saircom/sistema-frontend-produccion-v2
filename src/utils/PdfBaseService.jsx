@@ -65,11 +65,11 @@ export class PdfBaseService {
             .filter(t => t !== ""); // Filtramos por si algún técnico adicional está vacío
 
         // 3. Combinamos todo en un solo array y unimos con comas
-        const todosLosTecnicos = [tecnicoPrincipal, ...adicionales].filter(t => t !== "");
-
-        const tecnico = todosLosTecnicos.length > 0
-            ? todosLosTecnicos.join(", ")
-            : "No asignado";
+        const todosLosTecnicos = [...new Map(
+            [tecnicoPrincipal, ...adicionales]
+                .filter(nombre => nombre !== "")
+                .map(nombre => [nombre.toLocaleLowerCase('es'), nombre])
+        ).values()];
 
         // ===== FECHA CORREGIDA =====
         let fechaFormateada = "No especificada";

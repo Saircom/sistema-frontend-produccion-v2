@@ -12,10 +12,11 @@ export const ServicioHeader = memo(({
   const [mostrarMenuEstado, setMostrarMenuEstado] = useState(false);
 
   // Normalización de roles para validación segura
-  const rolUser = (user?.rol || "").toLowerCase().trim();
-  const esAdmin = rolUser.includes("ADMINISTRADOR");
-  const esTecnico = rolUser.includes("TECNICO");
-  const esPostventa = rolUser.includes("POSTVENTA");
+  const rolUser = (user?.rol || "").toUpperCase().trim();
+  const esSuperadmin = rolUser === "SUPERADMINISTRADOR";
+  const esAdmin = rolUser === "ADMINISTRADOR" || esSuperadmin;
+  const esTecnico = rolUser === "TECNICO" || esSuperadmin;
+  const esPostventa = rolUser === "POSTVENTA" || esSuperadmin;
 
   const handleDelete = async () => {
     const success = await onEstadoChange("Eliminado");

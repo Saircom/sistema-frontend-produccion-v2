@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth, UserRole } from "../context/authContext";
+import { canAccess } from "../utils/permissions.js";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -20,8 +21,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // Si el rol del usuario no está permitido, redirige a una página de acceso denegado o login
-  if (!allowedRoles.includes(user.rol)) {
-    return <Navigate to="/*" state={{ from: location }} replace />;
+  if (!canAccess(user, allowedRoles)) {
+    return <Navigate to="/acceso-denegado" state={{ from: location }} replace />;
   }
 
   // Si el usuario tiene el rol adecuado, renderiza el contenido

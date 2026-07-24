@@ -30,16 +30,18 @@ export const notify = {
       confirmButtonColor: "#f59e0b",
     });
   },
-  confirm: async (title, text = "") => {
+  confirm: async (title, text = "", options = {}) => {
     const result = await Swal.fire({
       title,
       text,
-      icon: "warning",
+      icon: options.icon || "warning",
       showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#ef4444",
+      confirmButtonText: options.confirmButtonText || "Sí, eliminar",
+      cancelButtonText: options.cancelButtonText || "Cancelar",
+      confirmButtonColor: options.confirmButtonColor || "#ef4444",
       cancelButtonColor: "#94a3b8",
+      reverseButtons: true,
+      focusCancel: true,
       customClass: { popup: "rounded-3xl", confirmButton: "rounded-xl", cancelButton: "rounded-xl" },
     });
     return result.isConfirmed;

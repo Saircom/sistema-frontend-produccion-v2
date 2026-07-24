@@ -1,16 +1,68 @@
-import React, { useEffect, useState, useCallback } from 'react';
+/* eslint-disable react/prop-types */
+import { useEffect, useCallback, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from "../context/authContext";
 import { jwtDecode } from 'jwt-decode';
+import { isSuperAdmin } from '../utils/permissions.js';
+import { useRealtime } from '../context/RealtimeContext.jsx';
+import { socket } from '../services/socket.js';
+import { otService } from '../services/ot.service.js';
+import informetecnicoService from '../modules/informe-tecnico/service/informetecnico.service.js';
 import {
-  LayoutDashboard, UserCog, ClipboardList,
-  Users, Monitor, Laptop
+  LayoutDashboard, UserCog, ClipboardList, WalletCards,
+  Users, Laptop
 } from "lucide-react";
 
-const MainNav = ({ isOpen, sidebarRef }) => {
+const MainNav = ({ isOpen, sidebarRef, onNavigate }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const { revision } = useRealtime();
+  const userRole = user?.rol;
+  const unrestricted = isSuperAdmin(user);
+  const puedeVerPlanner = unrestricted || ['ADMINISTRADOR', 'PLANNER'].includes(userRole);
+  const [cotizacionesPendientes, setCotizacionesPendientes] = useState(0);
+  const [ordenesPendientes, setOrdenesPendientes] = useState(0);
+  const [informesNoRevisados, setInformesNoRevisados] = useState(0);
+
+  const cargarContadoresPlanner = useCallback(async () => {
+    if (!puedeVerPlanner) {
+      setCotizacionesPendientes(0);
+      setOrdenesPendientes(0);
+      setInformesNoRevisados(0);
+      return;
+    }
+    try {
+      const [cotizaciones, ordenes, informesResponse] = await Promise.all([
+        otService.getCotizacionesDisponibles(),
+        otService.getOrdenes(),
+        informetecnicoService.getAll()
+      ]);
+      const informes = Array.isArray(informesResponse?.data)
+        ? informesResponse.data
+        : Array.isArray(informesResponse) ? informesResponse : [];
+      setCotizacionesPendientes(Array.isArray(cotizaciones) ? cotizaciones.length : 0);
+      setOrdenesPendientes(Array.isArray(ordenes) ? ordenes.filter(orden => (
+        String(orden?.estado || '').trim().toLowerCase() !== 'finalizada'
+      )).length : 0);
+      setInformesNoRevisados(informes.filter(informe => (
+        String(informe?.estado_revision || 'No revisado').trim().toLowerCase() === 'no revisado'
+      )).length);
+    } catch (error) {
+      console.error('No se pudieron actualizar los contadores de Planner:', error);
+    }
+  }, [puedeVerPlanner]);
+
+  useEffect(() => {
+    cargarContadoresPlanner();
+    socket.on('planner:pendientes-actualizados', cargarContadoresPlanner);
+    socket.on('planner:ordenes-actualizadas', cargarContadoresPlanner);
+    socket.on('informes:pendientes-actualizados', cargarContadoresPlanner);
+    return () => {
+      socket.off('planner:pendientes-actualizados', cargarContadoresPlanner);
+      socket.off('planner:ordenes-actualizadas', cargarContadoresPlanner);
+      socket.off('informes:pendientes-actualizados', cargarContadoresPlanner);
+    };
+  }, [cargarContadoresPlanner, revision]);
 
   // Definimos roles en mayúsculas para coincidir con la DB y AuthContext
   const menuData = [
@@ -24,7 +76,7 @@ const MainNav = ({ isOpen, sidebarRef }) => {
         // { label: "Panel de Control", to: "/dashboard-postventa", icon: LayoutDashboard, roles: ["POSTVENTA"] },
         // { label: "Panel de Control", to: "/dashboard-tecnico", icon: LayoutDashboard, roles: ["TECNICO"] },
         { label: "Usuarios y Roles", to: "/usuarios", icon: UserCog, roles: ["ADMINISTRADOR"] },
-
+        { label: "Reporte de viáticos", to: "/administrador/viaticos", icon: WalletCards, roles: ["ADMINISTRADOR"] },
       ],
     },
     {
@@ -36,13 +88,24 @@ const MainNav = ({ isOpen, sidebarRef }) => {
         { label: "Equipos", to: "/cliente/equipos", icon: Users, roles: ["ADMINISTRADOR", "POSTVENTA"] },
       ],
     },
+
+    {
+      title: "Tecnico",
+      key: "tecnico",
+      roles: ["ADMINISTRADOR", "TECNICO"],
+      items: [
+        { label: "Mis Órdenes", to: "/tecnico/ordenes", icon: ClipboardList, roles: ["ADMINISTRADOR", "TECNICO"] },
+        { label: "Mis viáticos", to: "/tecnico/mis-viaticos", icon: WalletCards, roles: ["TECNICO"] },
+      ],
+    },
     {
       title: "Planner",
-      key: "planner ",
+      key: "planner",
       roles: ["ADMINISTRADOR", "PLANNER"],
       items: [
-        { label: "Movilidades", to: "/planner/movilidades", icon: Users, roles: ["ADMINISTRADOR", "POSTVENTA", "PLANNER"] },
-        { label: "Solicitudes", to: "/planner/solicitud", icon: Users, roles: ["ADMINISTRADOR", "POSTVENTA", "PLANNER"] }
+        { label: "Cotizaciones Aprobadas", to: "/planner/cotizaciones", icon: Users, roles: ["ADMINISTRADOR", "PLANNER"], badge: cotizacionesPendientes },
+        { label: "Programación OT", to: "/planner/ordenes", icon: Users, roles: ["ADMINISTRADOR", "PLANNER"], badge: ordenesPendientes },
+        { label: "Movilidades", to: "/planner/movilidades", icon: Users, roles: ["ADMINISTRADOR", "PLANNER"], }
       ],
     },
     {
@@ -50,7 +113,7 @@ const MainNav = ({ isOpen, sidebarRef }) => {
       key: "postventa ",
       roles: ["ADMINISTRADOR", "POSTVENTA"],
       items: [
-        { label: "Lista de Cotizacion", to: "/postventa/lista", icon: Users, roles: ["ADMINISTRADOR", "POSTVENTA"] },
+        { label: "Cotizacion", to: "/postventa/cotizacion", icon: UserCog, roles: ["ADMINISTRADOR", "POSTVENTA"] },
       ],
     },
     {
@@ -59,9 +122,7 @@ const MainNav = ({ isOpen, sidebarRef }) => {
       roles: ["ADMINISTRADOR", "TECNICO", "POSTVENTA", "PLANNER"],
       items: [
         { label: "Calendario", to: "/servicio/calendario", icon: ClipboardList, roles: ["ADMINISTRADOR", "POSTVENTA", "PLANNER"] },
-        { label: "Mis Servicio", to: "/servicio/lista", icon: ClipboardList, roles: ["ADMINISTRADOR", "TECNICO", "POSTVENTA", "PLANNER"] },
-        { label: "Lista de Informes", to: "/tecnicos/reportes", icon: ClipboardList, roles: ["ADMINISTRADOR", "POSTVENTA", "PLANNER"] },
-        { label: "Historial Informes", to: "/servicio/historial-cliente", icon: ClipboardList, roles: ["ADMINISTRADOR", "POSTVENTA", "PLANNER"] },
+        { label: "Lista de Informes", to: "/informe-tecnico", icon: ClipboardList, roles: ["ADMINISTRADOR", "POSTVENTA", "PLANNER"], badge: puedeVerPlanner ? informesNoRevisados : 0 },
         { label: "Gastos", to: "/servicio/gastos", icon: Laptop, roles: ["ADMINISTRADOR", "TECNICO", "PLANNER"] },
         { label: "Tiempos", to: "/servicio/tiempos", icon: Laptop, roles: ["ADMINISTRADOR", "PLANNER", "PLANNER"] }
       ],
@@ -84,19 +145,13 @@ const MainNav = ({ isOpen, sidebarRef }) => {
     },
   ];
 
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 1024);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
   const checkToken = useCallback(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
     try {
       const decoded = jwtDecode(token);
       if (decoded.exp * 1000 < Date.now()) { logout(); navigate("/login"); }
-    } catch (e) { logout(); navigate("/login"); }
+    } catch { logout(); navigate("/login"); }
   }, [logout, navigate]);
 
   useEffect(() => {
@@ -106,20 +161,18 @@ const MainNav = ({ isOpen, sidebarRef }) => {
   }, [checkToken]);
 
   // CORRECCIÓN: Quitamos el .toLowerCase() para que coincida con los valores del objeto UserRole
-  const userRole = user?.rol;
-
   return (
     <aside
       ref={sidebarRef}
-      className={`fixed top-16 left-0 h-[calc(100vh-4rem)] w-50 bg-white border-r border-gray-200 z-40 transition-transform duration-300
-      ${isMobile ? (isOpen ? "translate-x-0" : "-translate-x-full") : "translate-x-0"} 
-      lg:translate-x-0`}
+      id="main-navigation"
+      aria-label="Navegación principal"
+      className={`fixed bottom-0 left-0 top-12 z-40 w-[min(18rem,86vw)] border-r border-gray-200 bg-white shadow-xl transition-transform duration-300 ease-out lg:w-50 lg:translate-x-0 lg:shadow-none ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
     >
       <div className="h-full flex flex-col border-r border-gray-100">
-        <nav className="flex-1 overflow-y-auto p-1 space-y-2 custom-scrollbar">
+        <nav className="custom-scrollbar flex-1 space-y-3 overflow-y-auto overscroll-contain p-3 pb-6 lg:p-2">
           {menuData.map((section) => {
             // Verificamos si el rol del usuario está en la lista permitida de la sección
-            if (!userRole || !section.roles.includes(userRole)) return null;
+            if (!userRole || (!unrestricted && !section.roles.includes(userRole))) return null;
 
             return (
               <div key={section.key} className="space-y-1">
@@ -130,14 +183,15 @@ const MainNav = ({ isOpen, sidebarRef }) => {
                 <ul className="space-y-1">
                   {section.items.map((item, index) => {
                     // Verificamos si el rol del usuario está en la lista permitida del item
-                    if (!item.roles.includes(userRole)) return null;
+                    if (!unrestricted && !item.roles.includes(userRole)) return null;
                     const Icon = item.icon;
                     return (
                       <li key={index}>
                         <NavLink
                           to={item.to}
+                          onClick={onNavigate}
                           className={({ isActive }) =>
-                            `flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${isActive
+                            `flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 lg:min-h-0 lg:gap-2 lg:py-2 lg:text-xs ${isActive
                               ? "bg-blue-600 text-white shadow-sm"
                               : "text-gray-600 hover:bg-gray-50 hover:text-blue-600"
                             }`
@@ -147,6 +201,11 @@ const MainNav = ({ isOpen, sidebarRef }) => {
                             <>
                               <Icon size={18} className={isActive ? "text-white" : "text-gray-400"} />
                               <span>{item.label}</span>
+                              {item.badge > 0 && (
+                                <span className={`ml-auto inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-black ${isActive ? 'bg-white text-blue-700' : 'bg-red-600 text-white'}`}>
+                                  {item.badge > 99 ? '99+' : item.badge}
+                                </span>
+                              )}
                             </>
                           )}
                         </NavLink>

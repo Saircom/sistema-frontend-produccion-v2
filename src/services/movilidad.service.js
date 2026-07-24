@@ -1,46 +1,60 @@
-// src/modules/equipos/movilidad.service.js
+// src/services/movilidad.service.js
 import api from './api.service.js';
 
 export const movilidadService = {
     // Obtener todas las movilidades
     async getAll() {
-        const response = await api.get('/movilidades');
-        return response.data;
+        const { data } = await api.get('/movilidades');
+        return data;
     },
 
-    // Obtener una movilidad por ID
+    // Obtener una movilidad por ID (incluye historial y documentos)
     async getById(id) {
-        const response = await api.get(`/movilidades/${id}`);
-        return response.data;
+        const { data } = await api.get(`/movilidades/${id}`);
+        return data;
     },
 
-    // Crear una nueva movilidad
-    async create(data) {
-        const response = await api.post('/movilidades', data);
-        return response.data;
+    // Registrar una nueva movilidad
+    async create(payload) {
+        const { data } = await api.post('/movilidades', payload);
+        return data;
     },
 
-    // Actualizar información general
-    async update(id, data) {
-        const response = await api.put(`/movilidades/${id}`, data);
-        return response.data;
-    },
-
-    // Actualizar kilometraje
-    async updateKilometraje(id, kilometraje) {
-        const response = await api.patch(`/movilidades/${id}/kilometraje`, { kilometraje_actual: kilometraje });
-        return response.data;
-    },
-
-    // Obtener historial de servicios de una movilidad
-    async getHistorialServicios(id) {
-        const response = await api.get(`/movilidades/${id}/historial`);
-        return response.data;
+    // Actualizar datos de la movilidad
+    async update(id, payload) {
+        const { data } = await api.put(`/movilidades/${id}`, payload);
+        return data;
     },
 
     // Eliminar movilidad
     async delete(id) {
-        const response = await api.delete(`/movilidades/${id}`);
-        return response.data;
+        const { data } = await api.delete(`/movilidades/${id}`);
+        return data;
+    },
+
+    // Registrar mantenimiento
+    async addMantenimiento(id, payload) {
+        const { data } = await api.post(
+            `/movilidades/${id}/mantenimiento`,
+            payload
+        );
+        return data;
+    },
+
+    // Registrar documento (SOAT, Revisión Técnica, Seguro, etc.)
+    async addDocumento(id, formData) {
+        const { data } = await api.post(
+            `/movilidades/${id}/documento`,
+            formData,
+            {
+                headers: {
+                    "Content-Type": "multipart/form-data"
+                }
+            }
+        );
+
+        return data;
     }
 };
+
+export default movilidadService; 

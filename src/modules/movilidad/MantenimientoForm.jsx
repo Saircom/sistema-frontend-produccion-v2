@@ -1,92 +1,114 @@
 import React, { useState } from 'react';
 import { movilidadService } from '../../services/movilidad.service';
 
-export const MantenimientoForm = ({ id_movilidad, kilometraje_actual, onSuccess }) => {
+export const MantenimientoForm = ({ movilidad_id, kilometraje_actual, onSuccess }) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Inicializamos el estado asegurando que los valores numéricos sean correctos
     const [formData, setFormData] = useState({
         fecha_mantenimiento: new Date().toISOString().split('T')[0],
-        kilometraje_mantenimiento: kilometraje_actual || 0,
-        proximo_mantenimiento_km: 0,
-        proximo_mantenimiento_fecha: '',
+        kilometraje_al_momento: kilometraje_actual || 0,
         tipo: 'Preventivo',
-        observacion: ''
+        descripcion_trabajo: '',
+        observaciones: '',
     });
-
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ 
-            ...prev, 
-            [name]: (name.includes('km')) ? parseInt(value) || 0 : value 
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
         }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        if (formData.kilometraje_mantenimiento < kilometraje_actual) {
-            return alert(`El kilometraje no puede ser menor al actual (${kilometraje_actual})`);
+
+        // 1. Validación preventiva antes de enviar
+        if (!movilidad_id) {
+            alert('Error: No se ha detectado el ID del vehículo.');
+            return;
         }
-        
+
         setIsSubmitting(true);
+
         try {
-            await movilidadService.registrarMantenimiento({ ...formData, id_movilidad });
-            alert('Mantenimiento registrado con éxito');
+            // 2. Construimos el objeto final incluyendo explícitamente el movilidad_id
+            // Esto asegura que el backend reciba el valor y no un 'undefined'
+            const dataToSubmit = {
+                ...formData,
+                movilidad_id: Number(movilidad_id),
+                kilometraje_al_momento: Number(formData.kilometraje_al_momento)
+            };
+
+            await movilidadService.addMantenimiento(movilidad_id, dataToSubmit);
+
+            alert('Registro exitoso');
             if (onSuccess) onSuccess();
         } catch (error) {
-            console.error(error);
-            alert('Error al guardar el mantenimiento');
+            console.error("Detalle del error:", error.response?.data || error.message);
+            alert('Error al guardar: ' + (error.response?.data?.error || 'Ocurrió un error inesperado'));
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4 p-4">
-            {/* Fecha y Kilometraje */}
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Fecha</label>
-                    <input type="date" name="fecha_mantenimiento" value={formData.fecha_mantenimiento} onChange={handleChange} className="w-full p-2 border rounded" required />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">KM Actual</label>
-                    <input type="number" name="kilometraje_mantenimiento" value={formData.kilometraje_mantenimiento} onChange={handleChange} className="w-full p-2 border rounded" required />
-                </div>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded shadow-sm bg-white">
+            <h2 className="text-lg font-bold">Registrar Mantenimiento</h2>
 
-            {/* Próximo Mantenimiento */}
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Próximo KM</label>
-                    <input type="number" name="proximo_mantenimiento_km" value={formData.proximo_mantenimiento_km} onChange={handleChange} className="w-full p-2 border rounded" placeholder="ej. 50000" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">Próxima Fecha</label>
-                    <input type="date" name="proximo_mantenimiento_fecha" value={formData.proximo_mantenimiento_fecha} onChange={handleChange} className="w-full p-2 border rounded" />
-                </div>
-            </div>
+            <input
+                type="date"
+                name="fecha_mantenimiento"
+                value={formData.fecha_mantenimiento}
+                onChange={handleChange}
+                className="w-full p-2 border rounded"
+                required
+            />
 
-            {/* Tipo y Observación */}
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Tipo de Mantenimiento</label>
-                <select name="tipo" value={formData.tipo} onChange={handleChange} className="w-full p-2 border rounded">
-                    <option value="Preventivo">Preventivo</option>
-                    <option value="Correctivo">Correctivo</option>
-                </select>
-            </div>
-
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Observaciones</label>
-                <textarea name="observacion" value={formData.observacion} onChange={handleChange} className="w-full p-2 border rounded" rows="2" />
-            </div>
-
-            <button 
-                type="submit" 
-                disabled={isSubmitting} 
-                className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 font-semibold transition"
+            <select
+                name="tipo"
+                value={formData.tipo}
+                onChange={handleChange}
+                className="w-full p-2 border rounded bg-white"
             >
-                {isSubmitting ? 'Procesando...' : 'Registrar Mantenimiento'}
+                <option value="Preventivo">Preventivo</option>
+                <option value="Correctivo">Correctivo</option>
+            </select>
+
+            <input
+                type="number"
+                name="kilometraje_al_momento"
+                value={formData.kilometraje_al_momento}
+                onChange={handleChange}
+                className="w-full p-2 border rounded"
+                placeholder="Kilometraje actual"
+                required
+            />
+
+            <textarea
+                name="descripcion_trabajo"
+                value={formData.descripcion_trabajo}
+                onChange={handleChange}
+                placeholder="Trabajo realizado"
+                className="w-full p-2 border rounded"
+                required
+            />
+
+            <textarea
+                name="observaciones"
+                value={formData.observaciones}
+                onChange={handleChange}
+                placeholder="Observaciones"
+                className="w-full p-2 border rounded"
+            />
+
+            <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+            >
+                {isSubmitting ? 'Procesando...' : 'Guardar'}
             </button>
         </form>
     );

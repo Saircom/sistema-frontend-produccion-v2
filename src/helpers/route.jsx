@@ -5,7 +5,7 @@ const routes = {
     clientes: '/clientes',
 
     //Dashboard 
-    dashboardadministrador: '/panel-administrador',
+    dashboardadministrador: '/dashboard-administrador',
     dashboardpostventa: '/panel-postventa',
     dashboardtecnico: '/panel-tecnico',
     // Nueva ruta para detalle de equipos por cliente
@@ -23,8 +23,18 @@ const routes = {
     listmovilidades: '/planner/movilidades',
     listsolicitud: '/planner/solicitud',
 
+    //Informe tecnico
+    informetecnicolist: '/informe-tecnico',
+
+    //Movilidad
+    movilidaddetalle: '/movilidad/:id',
+
     // Postventa
     listcotizacion: '/postventa/lista',
+
+
+    cotizacion: '/postventa/cotizacion',
+    solicitudservicio: '/postventa/solicitud',
     // Modulo de Tiempos 
     historialtiempos: '/servicio/tiempos',
     gastosServicio: '/servicio/gastos',

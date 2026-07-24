@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MoreVertical } from "lucide-react";
 import Swal from "sweetalert2";
 import { createRoot } from "react-dom/client";
-import { io } from "socket.io-client";
 import { ApiWebURL } from "../../utils/index.jsx";
 import Pagination from "../../components/Pagination";
 import Loading from "../../components/Loading";
@@ -13,7 +12,7 @@ import { AsignacionForm } from "./AsignacionForm.jsx";
 export const SolicitudList = () => {
     const [listaSolicitud, setListaSolicitud] = useState([]);
     const [cargando, setCargando] = useState(false);
-    const [menuAbierto, setMenuAbierto] = useState(null);
+    const [, setMenuAbierto] = useState(null);
     const [pagina, setPagina] = useState(0);
     const [filasPagina] = useState(15);
     const [tecnicos, setTecnicos] = useState([]);
@@ -35,15 +34,15 @@ export const SolicitudList = () => {
         setCargando(true);
         const cargarInicial = async () => {
             const data = await UsuarioService.getAll();
-            setTecnicos(data.filter(u => u.nombre_rol === 'TECNICO'));
+            setTecnicos(data.filter(u => (
+                String(u?.nombre_rol ?? u?.rol ?? '').trim().toUpperCase() === 'TECNICO'
+                && Number(u?.estado) === 1
+            )));
             await leerServicio();
             setCargando(false);
         };
         cargarInicial();
 
-        const socket = io(ApiWebURL);
-        socket.on("servicio-actualizado", () => leerServicio());
-        return () => socket.disconnect();
     }, [leerServicio]);
 
     const handleAsignarTecnico = (item) => {
@@ -77,7 +76,7 @@ export const SolicitudList = () => {
                                 
                                 Swal.close();
                                 Swal.fire({ icon: 'success', title: '¡Actualizado!', timer: 1500, showConfirmButton: false });
-                            } catch (error) {
+                            } catch {
                                 Swal.fire('Error', 'No se pudo guardar la asignación', 'error');
                             }
                         }}

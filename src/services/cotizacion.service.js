@@ -14,14 +14,14 @@ export const cotizacionService = {
   },
 
   // Actualizar el estado de una cotización
-  updateEstado: async (id_servicio, nuevoEstado) => {
+  updateEstado: async (idCotizacion, nuevoEstado) => {
     try {
-      const response = await api.put(`/cotizacion/estado/${id_servicio}`, { 
+      const response = await api.patch(`/cotizacion/${idCotizacion}/estado`, {
         estado: nuevoEstado 
       });
-      return response.data;
+      return response.data?.data ?? null;
     } catch (error) {
-      console.error(`Error en cotizacionService.updateEstado para ID ${id_servicio}:`, error);
+      console.error(`Error al actualizar la cotización ${idCotizacion}:`, error);
       throw error;
     }
   }

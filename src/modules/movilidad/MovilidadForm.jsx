@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { movilidadService } from '../../services/movilidad.service';
 
-const formatDateForInput = (isoString) => {
-    if (!isoString) return '';
-    return isoString.split('T')[0];
-};
-
 export const MovilidadForm = ({ movilidadData, onSuccess }) => {
     const [formData, setFormData] = useState({
         placa: '',
@@ -13,9 +8,7 @@ export const MovilidadForm = ({ movilidadData, onSuccess }) => {
         modelo: '',
         tipo_vehiculo: '',
         kilometraje_actual: 0,
-        estado_disponibilidad: 'Disponible',
-        soat_vencimiento: '',
-        revision_tecnica_vencimiento: '',
+        estado_disponibilidad: 'Disponible'
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,9 +16,13 @@ export const MovilidadForm = ({ movilidadData, onSuccess }) => {
     useEffect(() => {
         if (movilidadData) {
             setFormData({
-                ...movilidadData,
-                soat_vencimiento: formatDateForInput(movilidadData.soat_vencimiento),
-                revision_tecnica_vencimiento: formatDateForInput(movilidadData.revision_tecnica_vencimiento)
+                id_movilidad: movilidadData.id_movilidad,
+                placa: movilidadData.placa || '',
+                marca: movilidadData.marca || '',
+                modelo: movilidadData.modelo || '',
+                tipo_vehiculo: movilidadData.tipo_vehiculo || '',
+                kilometraje_actual: movilidadData.kilometraje_actual || 0,
+                estado_disponibilidad: movilidadData.estado_disponibilidad || 'Disponible'
             });
         }
     }, [movilidadData]);
@@ -41,64 +38,62 @@ export const MovilidadForm = ({ movilidadData, onSuccess }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
+        
+        // Log para ver qué datos se están enviando al servidor
+        console.log("Enviando formulario:", formData);
 
         try {
             if (formData.id_movilidad) {
-                // CORRECCIÓN: Cambiar de 'actualizarMovilidad' a 'update'
-                await movilidadService.update(formData.id_movilidad, formData);
-                alert('Información actualizada con éxito');
+                await movilidadService.actualizarMovilidad(formData.id_movilidad, formData);
+                alert('Vehículo actualizado con éxito');
             } else {
-                // CORRECCIÓN: Cambiar de 'crearMovilidad' a 'create'
                 await movilidadService.create(formData);
-                alert('Movilidad registrada con éxito');
+                alert('Vehículo registrado con éxito');
             }
             if (onSuccess) onSuccess();
         } catch (error) {
-            console.error("Error al guardar:", error);
-            alert(`Error al guardar: ${error.message}`);
+            // Log detallado del error para la consola
+            console.error("Error en MovilidadForm:", error);
+            // Log adicional si el servidor responde con detalles específicos
+            if (error.response) {
+                console.error("Datos del error del servidor:", error.response.data);
+            }
+            alert(`Error: ${error.message || 'Ocurrió un error inesperado'}`);
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white rounded shadow-sm">
-            {/* Campos de texto */}
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-white rounded shadow-sm border">
+            {/* ... resto del JSX igual que antes ... */}
             <div>
                 <label className="block text-sm font-medium text-gray-700">Placa</label>
-                <input name="placa" value={formData.placa} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded mt-1" required />
+                <input name="placa" value={formData.placa} onChange={handleChange} className="w-full p-2 border rounded mt-1" required />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700">Marca</label>
-                <input name="marca" value={formData.marca} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded mt-1" required />
+                <input name="marca" value={formData.marca} onChange={handleChange} className="w-full p-2 border rounded mt-1" required />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700">Modelo</label>
-                <input name="modelo" value={formData.modelo} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded mt-1" required />
+                <input name="modelo" value={formData.modelo} onChange={handleChange} className="w-full p-2 border rounded mt-1" required />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700">Tipo de Vehículo</label>
-                <input name="tipo_vehiculo" value={formData.tipo_vehiculo} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded mt-1" required />
+                <input name="tipo_vehiculo" value={formData.tipo_vehiculo} onChange={handleChange} className="w-full p-2 border rounded mt-1" required />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700">Kilometraje Actual</label>
-                <input type="number" name="kilometraje_actual" value={formData.kilometraje_actual} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded mt-1" min="0" required />
+                <input type="number" name="kilometraje_actual" value={formData.kilometraje_actual} onChange={handleChange} className="w-full p-2 border rounded mt-1" min="0" required />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700">Estado de Disponibilidad</label>
-                <select name="estado_disponibilidad" value={formData.estado_disponibilidad} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded mt-1">
+                <label className="block text-sm font-medium text-gray-700">Estado</label>
+                <select name="estado_disponibilidad" value={formData.estado_disponibilidad} onChange={handleChange} className="w-full p-2 border rounded mt-1">
                     <option value="Disponible">Disponible</option>
                     <option value="En Mantenimiento">En Mantenimiento</option>
                     <option value="Ocupado">Ocupado</option>
                 </select>
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Vencimiento SOAT</label>
-                <input type="date" name="soat_vencimiento" value={formData.soat_vencimiento} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded mt-1" />
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Vencimiento Rev. Técnica</label>
-                <input type="date" name="revision_tecnica_vencimiento" value={formData.revision_tecnica_vencimiento} onChange={handleChange} className="w-full p-2 border border-gray-300 rounded mt-1" />
             </div>
 
             <button
@@ -106,9 +101,10 @@ export const MovilidadForm = ({ movilidadData, onSuccess }) => {
                 disabled={isSubmitting}
                 className="md:col-span-2 bg-blue-600 text-white py-2 rounded font-semibold hover:bg-blue-700 transition"
             >
-                {isSubmitting ? 'Guardando...' : formData.id_movilidad ? 'Actualizar Información' : 'Registrar Movilidad'}
+                {isSubmitting ? 'Guardando...' : formData.id_movilidad ? 'Actualizar Vehículo' : 'Registrar Vehículo'}
             </button>
         </form>
     );
 };
+
 export default MovilidadForm;

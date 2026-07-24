@@ -302,7 +302,7 @@ function ListaReportes() {
                                                             <button onClick={() => { setMenuAbierto(null); navigate(`/tecnicos/reportes/${item.id_servicio}/fotos`); }} className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 text-gray-700"><Camera size={14} /> Fotos</button>
                                                             <button onClick={() => { setMenuAbierto(null); navigate(`/tecnicos/reportes/${item.id_servicio}/firma`); }} className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 text-gray-700"><PenTool size={14} /> Firma</button>
 
-                                                            {user?.rol === "ADMINISTRADOR" && (
+                                                            {['ADMINISTRADOR', 'SUPERADMINISTRADOR'].includes(user?.rol) && (
                                                                 <>
                                                                     <div className="border-t mt-1 pt-1 px-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Cambiar Estado</div>
                                                                     <button className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 text-gray-700"

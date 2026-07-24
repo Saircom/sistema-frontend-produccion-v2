@@ -1,182 +1,67 @@
-import React, { useState, useEffect } from "react";
-import { DashboardService } from '../../../services/dashboard.service';
+/* eslint-disable react/prop-types */
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
+import { ArcElement, BarElement, CategoryScale, Chart as ChartJS, Filler, Legend, LinearScale, LineElement, PointElement, Tooltip } from 'chart.js';
+import { AlertTriangle, BriefcaseBusiness, CalendarRange, CheckCircle2, Clock3, FileCheck2, RefreshCw, TrendingUp, Truck, WalletCards } from 'lucide-react';
+import { DashboardService } from '../../../services/dashboard.service.js';
+import { useRealtime } from '../../../context/RealtimeContext.jsx';
+
+ChartJS.register(ArcElement, BarElement, CategoryScale, Filler, Legend, LinearScale, LineElement, PointElement, Tooltip);
+
+const numero = value => Number(value || 0);
+const dinero = value => new Intl.NumberFormat('es-PE', { style:'currency', currency:'PEN' }).format(numero(value));
+const fecha = value => value ? new Date(value).toLocaleString('es-PE', { dateStyle:'medium', timeStyle:'short' }) : '-';
+const fechaInput = date => date.toISOString().slice(0,10);
+const chartOptions = { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ usePointStyle:true, boxWidth:8 } } }, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } }, x:{ grid:{ display:false } } } };
+
+const KpiCard = ({ icon:Icon, title, value, detail, tone='blue' }) => {
+    const tones={ blue:'bg-blue-50 text-blue-700',emerald:'bg-emerald-50 text-emerald-700',amber:'bg-amber-50 text-amber-700',red:'bg-red-50 text-red-700',violet:'bg-violet-50 text-violet-700',cyan:'bg-cyan-50 text-cyan-700' };
+    return <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p><p className="mt-2 text-3xl font-black text-slate-900">{value}</p></div><span className={`rounded-xl p-2.5 ${tones[tone]}`}><Icon className="h-5 w-5" /></span></div><p className="mt-3 text-xs leading-5 text-slate-500">{detail}</p></article>;
+};
 
 const DashboardAdministrador = () => {
-    const [servicios, setServicios] = useState([]);
-    const [metricasTipo, setMetricasTipo] = useState({});
-    const [productividadTecnicos, setProductividadTecnicos] = useState({});
-    const [cargando, setCargando] = useState(true);
-    const [error, setError] = useState(null);
+    const hoy=useMemo(()=>new Date(),[]);
+    const inicial=useMemo(()=>{ const d=new Date(); d.setDate(d.getDate()-89); return d; },[]);
+    const [filtros,setFiltros]=useState({desde:fechaInput(inicial),hasta:fechaInput(hoy)});
+    const [data,setData]=useState(null); const [loading,setLoading]=useState(true); const [error,setError]=useState('');
+    const { revision }=useRealtime();
 
-    useEffect(() => {
-        const obtenerDatosDeApi = async () => {
-            try {
-                setCargando(true);
-                const datosApi = await DashboardService.obtenerDatosDashboard();
-                setServicios(datosApi);
-                procesarDatos(datosApi);
-                setError(null);
-            } catch (err) {
-                console.error("Error al cargar el dashboard:", err);
-                setError(err.message || "No se pudo conectar con el servidor.");
-            } finally {
-                setCargando(false);
-            }
-        };
-        obtenerDatosDeApi();
-    }, []);
+    const cargar=useCallback(async()=>{ setLoading(true); setError(''); try{ setData(await DashboardService.obtenerDatosDashboard(filtros)); }catch(err){ setError(err.message||'No se pudo cargar el dashboard'); }finally{ setLoading(false); } },[filtros]);
+    useEffect(()=>{ cargar(); },[cargar,revision]);
 
-    const procesarDatos = (datos) => {
-        // 1. Contar por tipo de servicio
-        const tipos = datos.reduce((acc, curr) => {
-            const tipo = curr.tipoServicio || "No especificado";
-            acc[tipo] = (acc[tipo] || 0) + 1;
-            return acc;
-        }, {});
-        setMetricasTipo(tipos);
+    const aplicarDias=dias=>{ const fin=new Date(); const inicio=new Date(); inicio.setDate(inicio.getDate()-(dias-1)); setFiltros({desde:fechaInput(inicio),hasta:fechaInput(fin)}); };
+    const charts=useMemo(()=>!data?null:({
+        ot:{ labels:['Programadas','En proceso','Finalizadas'],datasets:[{data:[numero(data.ot.programadas),numero(data.ot.en_proceso),numero(data.ot.finalizadas)],backgroundColor:['#f59e0b','#2563eb','#10b981'],borderWidth:0}] },
+        cot:{ labels:['Borrador','Enviadas','Aprobadas','Rechazadas'],datasets:[{data:[numero(data.cotizaciones.borrador),numero(data.cotizaciones.enviadas),numero(data.cotizaciones.aprobadas),numero(data.cotizaciones.rechazadas)],backgroundColor:['#94a3b8','#3b82f6','#10b981','#ef4444'],borderWidth:0}] },
+        tendencia:{ labels:data.tendencia.map(x=>x.periodo),datasets:[{label:'OT programadas',data:data.tendencia.map(x=>numero(x.total)),borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.12)',fill:true,tension:.35},{label:'OT finalizadas',data:data.tendencia.map(x=>numero(x.finalizadas)),borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.08)',fill:true,tension:.35}] },
+        tecnicos:{ labels:data.tecnicos.map(x=>x.tecnico),datasets:[{label:'Activas',data:data.tecnicos.map(x=>numero(x.activas)),backgroundColor:'#f59e0b',borderRadius:6},{label:'Finalizadas',data:data.tecnicos.map(x=>numero(x.finalizadas)),backgroundColor:'#10b981',borderRadius:6}] }
+    }),[data]);
 
-        // 2. Procesar productividad usando ID como llave única para evitar duplicados
-        const tecnicos = datos.reduce((acc, curr) => {
-            // Creamos una lista de objetos { id, nombre }
-            const lista = [];
-            if (curr.id_usuario_lider) lista.push({ id: curr.id_usuario_lider, nombre: curr.tecnicoLider });
-            
-            if (curr.idsApoyo && curr.tecnicosApoyo) {
-                const ids = String(curr.idsApoyo).split(',');
-                const nombres = String(curr.tecnicosApoyo).split(',');
-                ids.forEach((id, index) => {
-                    if (id.trim()) lista.push({ id: id.trim(), nombre: nombres[index].trim() });
-                });
-            }
+    if(loading&&!data) return <div className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({length:8},(_,i)=><div key={i} className="h-36 animate-pulse rounded-2xl bg-slate-200" />)}</div>;
+    if(error&&!data) return <div className="m-4 rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700"><p className="font-bold">No se pudo cargar el panel</p><p className="text-sm">{error}</p><button onClick={cargar} className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white">Reintentar</button></div>;
 
-            // Si no hay ninguno, lo marcamos como "Sin asignar"
-            const participantes = lista.length > 0 ? lista : [{ id: 'sin-asignar', nombre: 'Sin asignar' }];
+    const i=data.indicadores; const pendientesRevision=numero(data.informes.no_revisados)+numero(data.informes.observados);
+    return <main className="space-y-5 p-3 sm:p-5 lg:p-6">
+        <section className="rounded-2xl bg-gradient-to-r from-slate-950 via-blue-950 to-blue-800 p-5 text-white shadow-lg sm:p-6"><div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-blue-200">Inteligencia operativa</p><h1 className="mt-2 text-2xl font-black sm:text-3xl">Panel ejecutivo</h1><p className="mt-2 max-w-2xl text-sm text-blue-100">Indicadores calculados directamente desde operaciones, informes, tiempos, flota y viáticos.</p></div><div className="flex flex-wrap items-end gap-2 rounded-xl bg-white/10 p-3 backdrop-blur"><label className="text-xs">Desde<input type="date" value={filtros.desde} max={filtros.hasta} onChange={e=>setFiltros(f=>({...f,desde:e.target.value}))} className="mt-1 block rounded-lg border-0 bg-white px-3 py-2 text-slate-900" /></label><label className="text-xs">Hasta<input type="date" value={filtros.hasta} min={filtros.desde} onChange={e=>setFiltros(f=>({...f,hasta:e.target.value}))} className="mt-1 block rounded-lg border-0 bg-white px-3 py-2 text-slate-900" /></label><button onClick={()=>aplicarDias(30)} className="rounded-lg bg-white/15 px-3 py-2 text-xs font-bold hover:bg-white/25">30 días</button><button onClick={()=>aplicarDias(90)} className="rounded-lg bg-white/15 px-3 py-2 text-xs font-bold hover:bg-white/25">90 días</button><button onClick={cargar} className="rounded-lg bg-blue-500 p-2.5 hover:bg-blue-400" title="Actualizar"><RefreshCw className={`h-4 w-4 ${loading?'animate-spin':''}`} /></button></div></div></section>
 
-            participantes.forEach(({ id, nombre }) => {
-                if (!acc[id]) {
-                    acc[id] = { nombre: nombre, total: 0, noRevisado: 0, revisado: 0, observado: 0, eliminado: 0 };
-                }
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+            <KpiCard icon={BriefcaseBusiness} title="OT del periodo" value={numero(data.ot.total)} detail={`${numero(data.ot.finalizadas)} finalizadas · ${numero(data.ot.vencidas)} vencidas`} />
+            <KpiCard icon={CheckCircle2} title="Finalización OT" value={`${i.tasa_finalizacion_ot}%`} detail="Finalizadas / total de OT programadas en el rango" tone="emerald" />
+            <KpiCard icon={TrendingUp} title="Aprobación" value={`${i.tasa_aprobacion_cotizaciones}%`} detail="Aprobadas / cotizaciones con decisión final" tone="violet" />
+            <KpiCard icon={FileCheck2} title="Revisión informes" value={`${i.tasa_revision_informes}%`} detail={`${pendientesRevision} requieren revisión u observación`} tone={pendientesRevision?'amber':'emerald'} />
+            <KpiCard icon={WalletCards} title="Viáticos" value={dinero(data.viaticos.total)} detail={`${dinero(data.viaticos.por_pagar)} validados por pagar`} tone="cyan" />
+            <KpiCard icon={Truck} title="Flota disponible" value={`${i.disponibilidad_flota}%`} detail={`${numero(data.movilidades.disponibles)} de ${numero(data.movilidades.total)} movilidades`} tone={i.disponibilidad_flota<30?'red':'emerald'} />
+        </section>
 
-                acc[id].total += 1;
-                if (curr.estado === "no revisado") acc[id].noRevisado += 1;
-                else if (curr.estado === "revisado") acc[id].revisado += 1;
-                else if (curr.estado === "observado") acc[id].observado += 1;
-                else if (curr.estado === "eliminado") acc[id].eliminado += 1;
-            });
+        <section className="grid gap-4 xl:grid-cols-3"><article className="rounded-2xl border bg-white p-4 shadow-sm xl:col-span-2"><h2 className="font-bold text-slate-900">Tendencia de órdenes de trabajo</h2><p className="text-xs text-slate-500">Volumen programado frente a finalizado por mes</p><div className="mt-4 h-72"><Line data={charts.tendencia} options={chartOptions} /></div></article><article className="rounded-2xl border bg-white p-4 shadow-sm"><h2 className="font-bold text-slate-900">Estado actual de OT</h2><p className="text-xs text-slate-500">Distribución dentro del periodo</p><div className="mt-4 h-72"><Doughnut data={charts.ot} options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}} /></div></article></section>
 
-            return acc;
-        }, {});
+        <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3"><article className="rounded-2xl border bg-white p-4 shadow-sm"><h2 className="font-bold">Embudo de cotizaciones</h2><div className="mt-4 h-64"><Doughnut data={charts.cot} options={{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}} /></div></article><article className="rounded-2xl border bg-white p-4 shadow-sm xl:col-span-2"><h2 className="font-bold">Carga de técnicos</h2><p className="text-xs text-slate-500">Asignaciones como líder o apoyo, sin duplicar una misma OT</p><div className="mt-4 h-64"><Bar data={charts.tecnicos} options={{...chartOptions,indexAxis:'y'}} /></div></article></section>
 
-        setProductividadTecnicos(tecnicos);
-    };
+        <section className="grid gap-4 lg:grid-cols-3"><article className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><Clock3 className="h-5 w-5 text-blue-600"/><h2 className="font-bold">Eficiencia de tiempos</h2></div><dl className="mt-5 space-y-4"><div className="flex justify-between"><dt className="text-sm text-slate-500">Integridad de registros</dt><dd className="font-black">{i.integridad_tiempos}%</dd></div><div className="flex justify-between"><dt className="text-sm text-slate-500">Ejecución promedio</dt><dd className="font-black">{numero(data.tiempos.promedio_ejecucion_min)} min</dd></div><div className="flex justify-between"><dt className="text-sm text-slate-500">Espera promedio</dt><dd className="font-black">{numero(data.tiempos.promedio_espera_min)} min</dd></div></dl></article><article className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><WalletCards className="h-5 w-5 text-cyan-600"/><h2 className="font-bold">Control de viáticos</h2></div><dl className="mt-5 space-y-4"><div className="flex justify-between"><dt className="text-sm text-slate-500">Costo promedio por OT</dt><dd className="font-black">{dinero(i.costo_promedio_ot)}</dd></div><div className="flex justify-between"><dt className="text-sm text-slate-500">Pagado</dt><dd className="font-black text-emerald-600">{dinero(data.viaticos.pagado)}</dd></div><div className="flex justify-between"><dt className="text-sm text-slate-500">Por validar</dt><dd className="font-black text-amber-600">{dinero(data.viaticos.por_validar)}</dd></div></dl></article><article className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><CalendarRange className="h-5 w-5 text-violet-600"/><h2 className="font-bold">Calidad documental</h2></div><dl className="mt-5 space-y-4"><div className="flex justify-between"><dt className="text-sm text-slate-500">Informes generados</dt><dd className="font-black">{numero(data.informes.total)}</dd></div><div className="flex justify-between"><dt className="text-sm text-slate-500">No revisados</dt><dd className="font-black text-amber-600">{numero(data.informes.no_revisados)}</dd></div><div className="flex justify-between"><dt className="text-sm text-slate-500">Observados</dt><dd className="font-black text-red-600">{numero(data.informes.observados)}</dd></div></dl></article></section>
 
-    if (cargando) {
-        return (
-            <div className="flex justify-center items-center min-h-screen bg-[#F8FAFC]">
-                <p className="text-slate-500 font-medium animate-pulse text-lg">Cargando métricas en tiempo real...</p>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="flex justify-center items-center min-h-screen bg-[#F8FAFC] p-4">
-                <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-xl max-w-md text-center shadow-sm">
-                    <h3 className="font-bold text-lg mb-2">¡Oops! Algo salió mal</h3>
-                    <p className="text-sm text-red-600 mb-4">{error}</p>
-                    <button onClick={() => window.location.reload()} className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
-                        Reintentar conexión
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="p-4 md:p-6 bg-[#F8FAFC] min-h-screen font-sans text-slate-800">
-            <header className="mb-6">
-                <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Dashboard Operativo</h1>
-                <p className="text-slate-500 text-sm">Monitoreo basado en los estados oficiales del sistema.</p>
-            </header>
-
-            {/* KPIs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <span className="text-xs font-semibold text-slate-400 uppercase">Total Activos</span>
-                    <p className="text-2xl font-bold text-slate-900 mt-1">{servicios.filter(s => s.estado !== "eliminado").length}</p>
-                </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <span className="text-xs font-semibold text-green-600 uppercase">Revisados</span>
-                    <p className="text-2xl font-bold text-slate-900 mt-1">{servicios.filter(s => s.estado === "revisado").length}</p>
-                </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <span className="text-xs font-semibold text-amber-500 uppercase">No Revisados</span>
-                    <p className="text-2xl font-bold text-slate-900 mt-1">{servicios.filter(s => s.estado === "no revisado").length}</p>
-                </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <span className="text-xs font-semibold text-red-500 uppercase">Observados</span>
-                    <p className="text-2xl font-bold text-slate-900 mt-1">{servicios.filter(s => s.estado === "observado").length}</p>
-                </div>
-            </div>
-
-            {/* Tabla y Gráficos */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-100 lg:col-span-2">
-                    <h2 className="text-lg font-bold text-slate-900 mb-4">Rendimiento por Técnico</h2>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-slate-100 text-slate-400 text-sm font-medium">
-                                    <th className="pb-3">Técnico</th>
-                                    <th className="pb-3 text-center">Asignados</th>
-                                    <th className="pb-3 text-center text-green-600">Revisados</th>
-                                    <th className="pb-3 text-center text-amber-600">No Rev.</th>
-                                    <th className="pb-3 text-center text-red-500">Observ.</th>
-                                    <th className="pb-3 text-right">Efectividad</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50 text-sm">
-                                {Object.entries(productividadTecnicos).map(([id, datos]) => {
-                                    const totalValidos = datos.total - datos.eliminado;
-                                    const efectividad = totalValidos > 0 ? ((datos.revisado / totalValidos) * 100).toFixed(0) : 0;
-                                    return (
-                                        <tr key={id} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="py-3 font-medium text-slate-900">{datos.nombre}</td>
-                                            <td className="py-3 text-center text-slate-600">{datos.total}</td>
-                                            <td className="py-3 text-center text-green-600 font-semibold">{datos.revisado}</td>
-                                            <td className="py-3 text-center text-amber-600">{datos.noRevisado}</td>
-                                            <td className="py-3 text-center text-red-500">{datos.observado}</td>
-                                            <td className="py-3 text-right font-bold text-blue-600">{efectividad}%</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-100">
-                    <h2 className="text-lg font-bold text-slate-900 mb-4">Servicios por Tipo</h2>
-                    <div className="space-y-4">
-                        {Object.entries(metricasTipo).map(([tipo, cantidad]) => {
-                            const porcentaje = servicios.length > 0 ? ((cantidad / servicios.length) * 100).toFixed(0) : 0;
-                            return (
-                                <div key={tipo} className="space-y-1">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="font-medium text-slate-700">{tipo}</span>
-                                        <span className="text-slate-500 font-semibold">{cantidad} ({porcentaje}%)</span>
-                                    </div>
-                                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                        <div className="bg-blue-500 h-full rounded-full" style={{ width: `${porcentaje}%` }}></div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+        <section className="grid gap-4 xl:grid-cols-2"><article className="overflow-hidden rounded-2xl border bg-white shadow-sm"><div className="border-b px-5 py-4"><h2 className="font-bold">Clientes con mayor actividad</h2><p className="text-xs text-slate-500">Ordenado por cantidad de OT del periodo</p></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-slate-50 text-left text-xs uppercase text-slate-500"><tr><th className="px-5 py-3">Cliente</th><th className="px-5 py-3 text-right">OT</th><th className="px-5 py-3 text-right">Viáticos</th></tr></thead><tbody>{data.clientes.map(x=><tr key={x.id_cliente} className="border-t"><td className="px-5 py-3 font-medium">{x.razon_social}</td><td className="px-5 py-3 text-right font-bold">{x.ordenes}</td><td className="px-5 py-3 text-right">{dinero(x.viaticos)}</td></tr>)}</tbody></table></div></article><article className="overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm"><div className="flex items-center gap-2 border-b border-red-100 bg-red-50 px-5 py-4"><AlertTriangle className="h-5 w-5 text-red-600"/><div><h2 className="font-bold text-red-900">OT que requieren atención</h2><p className="text-xs text-red-700">No finalizadas y con fecha fin programada vencida</p></div></div><div className="max-h-80 overflow-y-auto">{!data.alertas.length?<p className="p-8 text-center text-sm text-slate-500">No existen OT vencidas.</p>:data.alertas.map(x=><div key={x.id_ot} className="border-b p-4 last:border-0"><div className="flex justify-between gap-3"><p className="font-bold text-slate-900">OT-{x.id_ot} · {x.cliente}</p><span className="rounded-full bg-red-100 px-2 py-1 text-[10px] font-bold text-red-700">{x.estado}</span></div><p className="mt-1 text-xs text-slate-500">Técnico: {x.tecnico||'Sin asignar'} · Venció: {fecha(x.fecha_fin_programada)}</p></div>)}</div></article></section>
+        <p className="text-right text-xs text-slate-400">Actualizado: {fecha(data.generado_en)}</p>
+    </main>;
 };
 
 export default DashboardAdministrador;

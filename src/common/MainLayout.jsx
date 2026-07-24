@@ -1,58 +1,62 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+/* eslint-disable react/prop-types */
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import MainHeader from "./MainHeader";
 import MainNav from "./MainNav";
 
 const MainLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarRef = useRef(null);
+  const location = useLocation();
 
   const toggleSidebar = useCallback(() => {
-    setSidebarOpen((prev) => !prev);
+    setSidebarOpen((current) => !current);
   }, []);
 
-  // Cerrar sidebar al hacer click afuera (Solo en móvil)
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        sidebarOpen &&
-        sidebarRef.current &&
-        !sidebarRef.current.contains(event.target) &&
-        window.innerWidth < 1024
-      ) {
-        setSidebarOpen(false);
-      }
+    if (!sidebarOpen || window.matchMedia("(min-width: 1024px)").matches) {
+      return undefined;
+    }
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") setSidebarOpen(false);
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+
+    document.addEventListener("keydown", handleEscape);
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "";
+    };
   }, [sidebarOpen]);
 
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* 1. Header Fijo (Mantiene h-16) */}
-      <MainHeader toggleSidebar={toggleSidebar} />
+    <div className="min-h-dvh overflow-x-hidden bg-gray-50">
+      <MainHeader toggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
 
-      {/* Contenedor intermedio con padding superior para compensar el header */}
-      <div className="flex flex-1 pt-16 relative">
-
-        {/* 2. Sidebar (Ancho w-52 fijo en desktop) */}
-        {/* Limpiado: se removió toggleSidebar ya que MainNav no lo declara en sus props */}
+      <div className="min-h-dvh pt-12">
         <MainNav
           isOpen={sidebarOpen}
           sidebarRef={sidebarRef}
+          onNavigate={() => setSidebarOpen(false)}
         />
 
-        {/* 3. Overlay para móvil */}
         {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden transition-opacity duration-300"
+          <button
+            type="button"
+            className="fixed inset-x-0 bottom-0 top-12 z-30 bg-slate-950/45 backdrop-blur-[2px] lg:hidden"
             onClick={() => setSidebarOpen(false)}
+            aria-label="Cerrar menú lateral"
           />
         )}
 
-        {/* 4. Contenido Principal */}
-        {/* Distribución exacta: ocupará todo el ancho restante sin invadir el menú */}
-        <main className="flex-1 w-full lg:pl-50 py-0 transition-all duration-300 min-w-0 relative">
-          <div className="w-full h-full">
+        <main className="min-w-0 w-full transition-[padding] duration-300 lg:pl-50">
+          <div className="min-h-[calc(100dvh-3rem)] w-full min-w-0 overflow-x-hidden">
             {children}
           </div>
         </main>

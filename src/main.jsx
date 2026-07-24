@@ -6,15 +6,18 @@ import './index.css';
 import App from './App.jsx';
 import { AuthProvider } from './context/authContext';
 import { AlertProvider } from './context/AlertContext';
+import { RealtimeProvider } from './context/RealtimeContext.jsx';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>
-      <AlertProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </AlertProvider>
+      <RealtimeProvider>
+        <AlertProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </AlertProvider>
+      </RealtimeProvider>
     </AuthProvider>
   </StrictMode>
 );

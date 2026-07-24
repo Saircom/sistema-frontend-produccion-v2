@@ -23,6 +23,11 @@ export const serviciosService = {
         return response.data;
     },
 
+    getHistorialTiempos: async () => {
+        const response = await api.get('/tiempos');
+        return response.data?.data ?? [];
+    },
+
     // --- OPERACIONES ---
     aperturarServicio: async (datosApertura) => {
         const response = await api.post('/servicios/apertura', datosApertura);
@@ -61,3 +66,5 @@ export const serviciosService = {
         return response.data;
     },
 };
+
+export default serviciosService;
