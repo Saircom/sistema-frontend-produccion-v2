@@ -15,7 +15,7 @@ import { Perfil } from './Usuarios/Perfil.jsx';
 import Login from '../home/Login';
 import Inicio from '../home/Inicio';
 import Clientes from './clientes/Clientes';
-import Equipos from './clientes/Equipos.jsx';
+import EquipoClientes from './clientes/Equipos';
 import { ClienteEquiposDetalle } from './clientes/ClienteEquiposDetalle';
 import Notificaciones from '../services/Notificaciones';
 import Usuarios from './Usuarios/Usuarios';
@@ -265,7 +265,7 @@ function MyApp() {
             <Route path={route.historialinforme} element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.tecnico, UserRole.postventa, UserRole.planner]}><HistorialInformes /></ProtectedRoute>} />
             <Route path={route.listaServicio} element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.almacen, UserRole.tecnico, UserRole.postventa, UserRole.planner]}><NuevoServicio /></ProtectedRoute>} />
             <Route path={route.clientes} element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.postventa, UserRole.planner]}><Clientes /></ProtectedRoute>} />
-            <Route path="/cliente/equipos" element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.postventa, UserRole.planner]}><Equipos /></ProtectedRoute>} />
+            <Route path="/cliente/equipos" element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.postventa, UserRole.planner]}><EquipoClientes /></ProtectedRoute>} />
             <Route path={route.calendario} element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.postventa, UserRole.planner]}><Calendario /></ProtectedRoute>} />
             <Route path={route.gastosServicio} element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.tecnico, UserRole.postventa, UserRole.planner]}><Gastos /></ProtectedRoute>} />
             <Route path={route.equiposCliente} element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.postventa, UserRole.planner]}><ClienteEquiposDetalle /></ProtectedRoute>} />
