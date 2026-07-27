@@ -9,7 +9,7 @@ import ProtectedRoute from '../components/protectedRoute';
 import NotFound from './NotFound';
 import Loading from '../components/Loading';
 import Accessdenied from '../components/Accessdenied';
-import { Perfil } from './Usuarios/Perfil.jsx';
+import { Perfil } from './Usuarios/Perfil';
 
 // Vistas
 import Login from '../home/Login'; 
