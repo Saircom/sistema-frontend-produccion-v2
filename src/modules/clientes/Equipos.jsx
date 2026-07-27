@@ -3,7 +3,7 @@ import { equipmentService } from "../../services/equipment.service.js";
 import Loading from "../../components/Loading.jsx";       // Asegura que las rutas a tus compartidos existan
 import Pagination from "../../components/Pagination.jsx"; // Asegura que las rutas a tus compartidos existan
 
-export default function Equipos() {
+export const Equipos = () => {
   const [listaEquipos, setListaEquipos] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [pagina, setPagina] = useState(0);
@@ -135,3 +135,5 @@ export default function Equipos() {
     </div>
   );
 }
+
+export default Equipos;
