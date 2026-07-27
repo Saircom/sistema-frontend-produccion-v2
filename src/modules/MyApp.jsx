@@ -12,7 +12,7 @@ import Accessdenied from '../components/Accessdenied';
 import { Perfil } from './Usuarios/Perfil.jsx';
 
 // Vistas
-import Login from '../home/Login';
+import Login from '../home/Login'; 
 import Inicio from '../home/Inicio';
 import Clientes from './clientes/Clientes';
 import EquipoClientes from './clientes/Equipos';
