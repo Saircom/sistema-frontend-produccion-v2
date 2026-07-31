@@ -97,10 +97,10 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                         const respuesta = await TiposervicioService.getByTipo(idTipo);
                         const subtipos = Array.isArray(respuesta) ? respuesta : respuesta?.data || [];
                         filas.push({
-                            idEquipo: {
+                            idEquipo: equipo.id_equipo ? {
                                 value: equipo.id_equipo,
                                 label: [equipo.marca, equipo.modelo, equipo.serie ? `Serie: ${equipo.serie}` : null].filter(Boolean).join(' - ')
-                            },
+                            } : null,
                             idTipoServicio: { value: idTipo, label: servicios[0]?.nombre_tipo_servicio || 'Servicio' },
                             idServicios: servicios.map(servicio => ({ value: servicio.id_subtipo_servicio, label: servicio.nombre_subtipo })),
                             subtiposDisponibles: subtipos.map(subtipo => ({
@@ -253,10 +253,6 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
         for (let index = 0; index < detalles.length; index++) {
             const detalle = detalles[index];
 
-            if (!detalle.idEquipo?.value) {
-                return `Debe seleccionar el equipo en la fila ${index + 1}`;
-            }
-
             if (!detalle.idTipoServicio?.value) {
                 return `Debe seleccionar el tipo de servicio en la fila ${index + 1}`;
             }
@@ -289,7 +285,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
             nota: header.nota.trim(),
             estado: header.estado,
             detalles: detalles.map((detalle) => ({
-                idEquipo: detalle.idEquipo.value,
+                idEquipo: detalle.idEquipo?.value || null,
                 idTipoServicio: detalle.idTipoServicio.value,
                 idServicios: detalle.idServicios.map(
                     (subtipo) => subtipo.value
@@ -353,7 +349,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                 </h2>
 
                 <p className="text-sm text-gray-500 mt-1">
-                    Registre el cliente, equipos y servicios.
+                    Registre el cliente y los servicios. El equipo es opcional.
                 </p>
             </div>
 
@@ -428,11 +424,11 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
             <div className="space-y-4">
                 <div>
                     <h3 className="text-lg font-semibold text-gray-800">
-                        Equipos y servicios
+                        Servicios y equipos
                     </h3>
 
                     <p className="text-sm text-gray-500">
-                        Cada equipo puede tener uno o varios subtipos.
+                        Seleccione el tipo y subtipo de servicio. Asocie un equipo solo cuando corresponda.
                     </p>
                 </div>
 
@@ -442,7 +438,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                         className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center bg-gray-50 border border-gray-200 p-4 rounded-lg"
                     >
                         <Select
-                            placeholder="Seleccionar equipo"
+                            placeholder="Equipo (opcional)"
                             options={equipos.map((equipo) => ({
                                 value: equipo.id_equipo,
                                 label: [
@@ -525,7 +521,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                     onClick={agregarDetalle}
                     className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold"
                 >
-                    + Agregar equipo
+                    + Agregar servicio
                 </button>
 
                 <button

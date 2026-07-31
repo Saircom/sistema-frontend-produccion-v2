@@ -1,5 +1,6 @@
 // src/modules/Tecnico/service/informe.service.js
 import api from '../../../services/api.service.js';
+import { cacheKeys, isNetworkError, offlineStore } from '../../../services/offline.service.js';
 
 const BASE_URL = '/informes';
 
@@ -59,11 +60,20 @@ export const informeService = {
             'detalle de la OT'
         );
 
-        const response = await api.get(
-            `${BASE_URL}/tecnico/${tecnico}/detalles/${detalle}`
-        );
-
-        return obtenerData(response);
+        const url = `${BASE_URL}/tecnico/${tecnico}/detalles/${detalle}`;
+        const cacheKey = cacheKeys.technicianReport(tecnico, detalle);
+        try {
+            const response = await api.get(url);
+            const data = obtenerData(response);
+            await offlineStore.set(cacheKey, data);
+            return data;
+        } catch (error) {
+            if (isNetworkError(error)) {
+                const cached = await offlineStore.get(cacheKey);
+                if (cached) return cached;
+            }
+            throw error;
+        }
     },
 
     /**
@@ -89,12 +99,29 @@ export const informeService = {
 
         const datos = validarPayload(payload);
 
-        const response = await api.put(
-            `${BASE_URL}/tecnico/${tecnico}/detalles/${detalle}`,
-            datos
-        );
-
-        return obtenerData(response, {});
+        const url = `${BASE_URL}/tecnico/${tecnico}/detalles/${detalle}`;
+        const cacheKey = cacheKeys.technicianReport(tecnico, detalle);
+        try {
+            const response = await api.put(url, datos);
+            return obtenerData(response, {});
+        } catch (error) {
+            if (!isNetworkError(error)) throw error;
+            await offlineStore.enqueue({ method: 'put', url, data: datos, cacheKey });
+            const cached = await offlineStore.get(cacheKey);
+            if (cached) {
+                const section = Object.keys(datos).find(key =>
+                    ['lecturas_compresor', 'lecturas_secador', 'lecturas_combustion', 'voltaje_amperaje',
+                        'filtros_y_componentes', 'detalle_informe'].includes(key)
+                );
+                if (section) cached[section] = [datos[section]];
+                await offlineStore.set(cacheKey, cached);
+            }
+            return {
+                success: true,
+                pendingSync: true,
+                message: 'Guardado sin internet. Se sincronizará automáticamente.'
+            };
+        }
     },
 
     /**
@@ -117,11 +144,19 @@ export const informeService = {
             'detalle de la OT'
         );
 
-        const response = await api.patch(
-            `${BASE_URL}/tecnico/${tecnico}/detalles/${detalle}/finalizar`
-        );
-
-        return obtenerData(response, {});
+        const url = `${BASE_URL}/tecnico/${tecnico}/detalles/${detalle}/finalizar`;
+        try {
+            const response = await api.patch(url);
+            return obtenerData(response, {});
+        } catch (error) {
+            if (!isNetworkError(error)) throw error;
+            await offlineStore.enqueue({ method: 'patch', url });
+            return {
+                success: true,
+                pendingSync: true,
+                message: 'Finalización guardada. Se sincronizará al recuperar internet.'
+            };
+        }
     },
 
     /**
@@ -136,11 +171,20 @@ export const informeService = {
             'detalle de la OT'
         );
 
-        const response = await api.get(
-            `${BASE_URL}/detalles/${detalle}`
-        );
-
-        return obtenerData(response);
+        const url = `${BASE_URL}/detalles/${detalle}`;
+        const cacheKey = cacheKeys.adminReport(detalle);
+        try {
+            const response = await api.get(url);
+            const data = obtenerData(response);
+            await offlineStore.set(cacheKey, data);
+            return data;
+        } catch (error) {
+            if (isNetworkError(error)) {
+                const cached = await offlineStore.get(cacheKey);
+                if (cached) return cached;
+            }
+            throw error;
+        }
     },
 
     /**

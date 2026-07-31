@@ -101,7 +101,7 @@ const CotizacionDetalleModal = ({ isOpen, onClose, cotizacion, loading, canEdit,
                     {/* Equipos */}
                     <div>
                         <h3 className="text-sm font-bold text-gray-800 mb-2">
-                            Equipos ({cotizacion.equipos?.length || 0})
+                            Servicios cotizados
                         </h3>
 
                         {!cotizacion.equipos || cotizacion.equipos.length === 0 ? (
@@ -110,11 +110,11 @@ const CotizacionDetalleModal = ({ isOpen, onClose, cotizacion, loading, canEdit,
                             </p>
                         ) : (
                             <div className="space-y-3">
-                                {cotizacion.equipos.map((eq) => (
-                                    <div key={eq.id_equipo} className="border border-gray-200 rounded-lg p-3">
+                                {cotizacion.equipos.map((eq, index) => (
+                                    <div key={eq.id_equipo ?? `sin-equipo-${index}`} className="border border-gray-200 rounded-lg p-3">
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
-                                                <p className="text-sm font-semibold text-gray-800">{eq.tipo_equipo}</p>
+                                                 <p className="text-sm font-semibold text-gray-800">{eq.sin_equipo ? 'Servicio sin equipo asociado' : eq.tipo_equipo}</p>
                                                 <p className="text-xs text-gray-500">{eq.marca} · {eq.modelo}</p>
                                             </div>
                                             <span className="text-[11px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-medium">
@@ -122,11 +122,11 @@ const CotizacionDetalleModal = ({ isOpen, onClose, cotizacion, loading, canEdit,
                                             </span>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mb-2">
+                                         {!eq.sin_equipo && <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mb-2">
                                             <p><span className="text-gray-400">Serie:</span> {eq.serie}</p>
                                             <p><span className="text-gray-400">Cód. interno:</span> {eq.codigo_interno}</p>
                                             <p className="col-span-2"><span className="text-gray-400">Encargado:</span> {eq.encargado_equipo}</p>
-                                        </div>
+                                         </div>}
 
                                         {eq.servicios?.length > 0 && (
                                             <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-100">

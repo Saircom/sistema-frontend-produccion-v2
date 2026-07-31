@@ -35,6 +35,17 @@ const OrdenesTrabajo = () => {
     const [ordenes, setOrdenes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [filtro, setFiltro] = useState("activas");
+
+    const ordenesActivas = ordenes.filter(
+        (orden) => orden.estado !== "Finalizada"
+    );
+    const ordenesFinalizadas = ordenes.filter(
+        (orden) => orden.estado === "Finalizada"
+    );
+    const ordenesFiltradas = filtro === "finalizadas"
+        ? ordenesFinalizadas
+        : ordenesActivas;
 
     const cargarOrdenes = async () => {
         try {
@@ -76,7 +87,7 @@ const OrdenesTrabajo = () => {
     return (
         <section className="space-y-6 p-6">
 
-            <header className="flex items-center justify-between">
+            <header className="flex flex-wrap items-center justify-between gap-4">
 
                 <div>
 
@@ -90,6 +101,22 @@ const OrdenesTrabajo = () => {
 
                 </div>
 
+                <div className="flex rounded-lg border border-slate-200 bg-white p-1">
+                    <button
+                        type="button"
+                        onClick={() => setFiltro("activas")}
+                        className={`rounded-md px-4 py-2 text-sm font-semibold ${filtro === "activas" ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-50"}`}
+                    >
+                        OT activas ({ordenesActivas.length})
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setFiltro("finalizadas")}
+                        className={`rounded-md px-4 py-2 text-sm font-semibold ${filtro === "finalizadas" ? "bg-green-600 text-white" : "text-slate-600 hover:bg-slate-50"}`}
+                    >
+                        OT finalizadas ({ordenesFinalizadas.length})
+                    </button>
+                </div>
             </header>
 
             {error && (
@@ -100,7 +127,7 @@ const OrdenesTrabajo = () => {
 
             )}
 
-            {!loading && ordenes.length === 0 && (
+            {!loading && ordenesFiltradas.length === 0 && (
 
                 <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
 
@@ -116,7 +143,7 @@ const OrdenesTrabajo = () => {
 
             <div className="grid gap-5">
 
-                {ordenes.map((orden) => (
+                {ordenesFiltradas.map((orden) => (
 
                     <article
                         key={orden.id_ot}

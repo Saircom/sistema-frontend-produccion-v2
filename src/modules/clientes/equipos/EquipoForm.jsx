@@ -14,6 +14,15 @@ const VACIO = {
   codigo_interno: 'NO APLICA'
 };
 
+const normalizarTipoEquipo = tipo => {
+  const valor = String(tipo ?? '').trim();
+  const comparable = valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+
+  if (comparable === 'EQUIPO ESTACIONARIO') return 'COMPRESOR ESTACIONARIO';
+  if (comparable === 'EQUIPO PORTATIL') return 'COMPRESOR PORTATIL';
+  return valor;
+};
+
 const EquipoForm = ({ idCliente, marcas = [], onSuccess, equipoAEditar = null }) => {
   const showAlert = useAlert();
   const [formData, setFormData] = useState(VACIO);
@@ -21,7 +30,7 @@ const EquipoForm = ({ idCliente, marcas = [], onSuccess, equipoAEditar = null })
 
   useEffect(() => {
     setFormData(equipoAEditar ? {
-      tipo_equipo: equipoAEditar.tipo_equipo || '',
+      tipo_equipo: normalizarTipoEquipo(equipoAEditar.tipo_equipo),
       id_marca: equipoAEditar.id_marca ? String(equipoAEditar.id_marca) : '',
       modelo: equipoAEditar.modelo || '',
       serie: equipoAEditar.serie || '',
@@ -82,8 +91,10 @@ const EquipoForm = ({ idCliente, marcas = [], onSuccess, equipoAEditar = null })
         <label className="text-sm font-semibold text-slate-700">Tipo de equipo <span className="text-red-600">*</span>
           <select name="tipo_equipo" required value={formData.tipo_equipo} onChange={handleChange} className={`${inputClass} mt-1.5 bg-white normal-case`}>
             <option value="">Seleccione el tipo</option>
-            <option value="Equipo estacionario">Equipo estacionario</option>
-            <option value="Equipo portatil">Equipo portátil</option>
+            <option value="COMPRESOR ESTACIONARIO">Compresor estacionario</option>
+            <option value="SECADOR REFRIGERATIVO">Secador refrigerativo</option>
+            <option value="GRUPO ELECTROGENO">Grupo electrógeno</option>
+            <option value="COMPRESOR PORTATIL">Compresor portátil</option>
           </select>
         </label>
         <label className="text-sm font-semibold text-slate-700">Marca <span className="text-red-600">*</span>

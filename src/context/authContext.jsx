@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types, react-refresh/only-export-components */
 import { createContext, useState, useContext, useEffect } from "react";
 import AuthService from "../services/auth.service"; 
+import { cacheKeys, isNetworkError, offlineStore } from "../services/offline.service.js";
 
 const AuthContext = createContext(undefined);
 
@@ -31,11 +32,18 @@ export const AuthProvider = ({ children }) => {
             try {
                 const data = await AuthService.validateToken();
                 if (data?.usuario) {
-                    setUser(formatUser(data));
+                    const formatted = formatUser(data);
+                    setUser(formatted);
+                    await offlineStore.set(cacheKeys.user, formatted);
                 }
             } catch (error) {
-                console.error("Sesión inválida, cerrando sesión:", error);
-                logout();
+                if (isNetworkError(error)) {
+                    const cachedUser = await offlineStore.get(cacheKeys.user);
+                    if (cachedUser) setUser(cachedUser);
+                } else {
+                    console.error("Sesión inválida, cerrando sesión:", error);
+                    logout();
+                }
             } finally {
                 setLoading(false);
             }
@@ -49,24 +57,31 @@ export const AuthProvider = ({ children }) => {
         try {
             const data = await AuthService.login(dni, password);
             if (data?.usuario) {
-                setUser(formatUser(data));
+                const formatted = formatUser(data);
+                setUser(formatted);
+                await offlineStore.set(cacheKeys.user, formatted);
                 return true;
             }
             return false;
         } catch (error) {
             console.error("Error en login:", error);
-            return false;
+            throw error;
         }
     };
 
     const logout = () => {
         AuthService.logout();
+        offlineStore.remove(cacheKeys.user);
         setUser(null);
     };
 
     const refreshUser = async () => {
         const data = await AuthService.validateToken();
-        if (data?.usuario) setUser(formatUser(data));
+        if (data?.usuario) {
+            const formatted = formatUser(data);
+            setUser(formatted);
+            await offlineStore.set(cacheKeys.user, formatted);
+        }
         return data?.usuario;
     };
 

@@ -7,6 +7,9 @@ import App from './App.jsx';
 import { AuthProvider } from './context/authContext';
 import { AlertProvider } from './context/AlertContext';
 import { RealtimeProvider } from './context/RealtimeContext.jsx';
+import { startAutoSync } from './services/sync.service.js';
+
+startAutoSync();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

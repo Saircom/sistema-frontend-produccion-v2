@@ -45,58 +45,78 @@ const CombustionForm = ({
 
             <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <Campo
-                    label="Oxígeno O₂"
-                    name="oxigeno"
-                    value={data.oxigeno}
+                    label="Marca"
+                    name="marca_combu"
+                    type="text"
+                    value={data.marca_combu}
                     onChange={onChange}
                 />
 
                 <Campo
-                    label="Monóxido de carbono CO"
-                    name="monoxido_carbono"
-                    value={data.monoxido_carbono}
+                    label="Modelo"
+                    name="modelo_combu"
+                    type="text"
+                    value={data.modelo_combu}
                     onChange={onChange}
                 />
 
                 <Campo
-                    label="Dióxido de carbono CO₂"
-                    name="dioxido_carbono"
-                    value={data.dioxido_carbono}
+                    label="Serie"
+                    name="serie_combu"
+                    type="text"
+                    value={data.serie_combu}
                     onChange={onChange}
                 />
 
                 <Campo
-                    label="Temperatura de gases"
-                    name="temperatura_gases"
-                    value={data.temperatura_gases}
+                    label="Voltaje"
+                    name="voltaje_combu"
+                    value={data.voltaje_combu}
                     onChange={onChange}
                 />
 
                 <Campo
-                    label="Temperatura ambiente"
-                    name="temperatura_ambiente"
-                    value={data.temperatura_ambiente}
+                    label="Presión de aceite"
+                    name="presion_aceite_combu"
+                    value={data.presion_aceite_combu}
                     onChange={onChange}
                 />
 
                 <Campo
-                    label="Eficiencia"
-                    name="eficiencia"
-                    value={data.eficiencia}
+                    label="RPM máximo"
+                    name="rpm_maximo_combu"
+                    value={data.rpm_maximo_combu}
                     onChange={onChange}
                 />
 
                 <Campo
-                    label="Exceso de aire"
-                    name="exceso_aire"
-                    value={data.exceso_aire}
+                    label="RPM mínimo"
+                    name="rpm_minimo_combu"
+                    value={data.rpm_minimo_combu}
                     onChange={onChange}
                 />
 
                 <Campo
-                    label="Tiro de chimenea"
-                    name="tiro_chimenea"
-                    value={data.tiro_chimenea}
+                    label="Tipo de aceite"
+                    name="tipo_aceite_combu"
+                    type="text"
+                    value={data.tipo_aceite_combu}
+                    onChange={onChange}
+                />
+
+                <Campo
+                    label="Nivel de aceite"
+                    name="nivel_aceite_combu"
+                    type="text"
+                    value={data.nivel_aceite_combu}
+                    onChange={onChange}
+                />
+
+                <Campo
+                    label="Nivel refrigerante"
+                    name="nivel_refrigerante_combu"
+                    type="text"
+                    value={data.nivel_refrigerante_combu}
                     onChange={onChange}
                 />
             </div>

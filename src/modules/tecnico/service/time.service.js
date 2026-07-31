@@ -1,5 +1,27 @@
 // src/services/tiempo.service.js
 import api from '../../../services/api.service.js';
+import { isNetworkError, offlineStore } from '../../../services/offline.service.js';
+
+const registerOrQueue = async (idOtDetalle, action) => {
+    const url = `/tiempos/${idOtDetalle}/${action}`;
+    try {
+        const response = await api.patch(url);
+        return response.data;
+    } catch (error) {
+        if (!isNetworkError(error)) throw error;
+        const registeredAt = new Date().toISOString();
+        await offlineStore.enqueue({
+            method: 'patch',
+            url
+        });
+        return {
+            success: true,
+            pendingSync: true,
+            registeredAt,
+            message: 'Registro guardado sin internet. Se sincronizará automáticamente.'
+        };
+    }
+};
 
 export const tiempoService = {
     async obtener(idOtDetalle) {
@@ -11,26 +33,14 @@ export const tiempoService = {
     },
 
     async registrarLlegada(idOtDetalle) {
-        const response = await api.patch(
-            `/tiempos/${idOtDetalle}/llegada`
-        );
-
-        return response.data;
+        return registerOrQueue(idOtDetalle, 'llegada');
     },
 
     async registrarInicio(idOtDetalle) {
-        const response = await api.patch(
-            `/tiempos/${idOtDetalle}/inicio`
-        );
-
-        return response.data;
+        return registerOrQueue(idOtDetalle, 'inicio');
     },
 
     async registrarFin(idOtDetalle) {
-        const response = await api.patch(
-            `/tiempos/${idOtDetalle}/fin`
-        );
-
-        return response.data;
+        return registerOrQueue(idOtDetalle, 'fin');
     }
 };

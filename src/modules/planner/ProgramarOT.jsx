@@ -352,17 +352,17 @@ const ProgramarOT = () => {
 
                                 return (
                                     <article
-                                        key={equipo.id_equipo}
+                                        key={equipo.id_equipo ?? 'sin-equipo'}
                                         className="rounded-xl border border-slate-200 bg-white p-5"
                                     >
                                         <div className="flex flex-wrap justify-between gap-3">
                                             <div>
                                                 <p className="text-xs font-semibold uppercase text-blue-600">
-                                                    Equipo
+                                                    {equipo.sin_equipo ? 'Servicio' : 'Equipo'}
                                                 </p>
 
                                                 <h3 className="font-bold text-slate-900">
-                                                    {equipo.tipo_equipo}
+                                                    {equipo.sin_equipo ? 'Sin equipo asociado' : equipo.tipo_equipo}
                                                 </h3>
 
                                                 <p className="text-sm text-slate-500">

@@ -11,6 +11,7 @@ import ImageService from './service/image.service.js';
 
 import LecturasCompresorForm from './form/estacionario/LecturasCompresorForm.jsx';
 import LecturasSecadorForm from './form/estacionario/LecturasSecadorForm.jsx';
+import CombustionForm from './form/estacionario/CombustionForm.jsx';
 import VoltajeAmperajeForm from './form/estacionario/VoltajeAmperaje.jsx';
 import FiltrosComponentesForm from './form/estacionario/FiltrosComponentesForm.jsx';
 import EvidenciasFotoForm from './form/estacionario/EvidenciasFotoForm.jsx';
@@ -26,10 +27,11 @@ import EvidenciasGaleria from './components/EvidenciasGaleria.jsx';
 
 import EstacionarioPDF from './pdf/EstacionarioPDF.jsx';
 
-const SECCIONES = { COMPRESOR: 'compresor', SECADOR: 'secador', ELECTRICOS: 'electricos', FILTROS: 'filtros', HALLAZGOS: 'hallazgos', RESPONSABLE: 'responsable' };
+const SECCIONES = { COMPRESOR: 'compresor', SECADOR: 'secador', COMBUSTION: 'combustion', ELECTRICOS: 'electricos', FILTROS: 'filtros', HALLAZGOS: 'hallazgos', RESPONSABLE: 'responsable' };
 const SECCION_PAYLOAD = {
     [SECCIONES.COMPRESOR]: 'lecturas_compresor',
     [SECCIONES.SECADOR]: 'lecturas_secador',
+    [SECCIONES.COMBUSTION]: 'lecturas_combustion',
     [SECCIONES.ELECTRICOS]: 'voltaje_amperaje',
     [SECCIONES.FILTROS]: 'filtros_y_componentes',
     [SECCIONES.HALLAZGOS]: 'detalle_informe',
@@ -71,6 +73,9 @@ const limpiarRegistroParaEdicion = (seccion, registro = {}) => {
         ['id_lectura_compresor', 'marca', 'modelo', 'serie'].forEach(campo => delete datos[campo]);
     }
     if (seccion === SECCIONES.SECADOR) delete datos.id_lectura_secador;
+    if (seccion === SECCIONES.COMBUSTION) {
+        ['id_lectura_combustion', 'id_servicio'].forEach(campo => delete datos[campo]);
+    }
     if (seccion === SECCIONES.ELECTRICOS) delete datos.id_voltaje_amperaje;
     if (seccion === SECCIONES.FILTROS) {
         ['id_detalle', 'id_filtro_componente', 'id_filtros_componentes'].forEach(campo => delete datos[campo]);
@@ -91,6 +96,33 @@ const CampoLectura = ({ label, value, className = '' }) => (
         <p className="mt-1 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-800">{mostrarValor(value)}</p>
     </div>
 );
+
+const ParametrosCombustion = ({ servicio = {} }) => {
+    const lectura = obtenerPrimerRegistro(servicio.lecturas_combustion);
+    const campos = [
+        ['Marca', lectura.marca_combu],
+        ['Modelo', lectura.modelo_combu],
+        ['Serie', lectura.serie_combu],
+        ['Voltaje', lectura.voltaje_combu],
+        ['Presión de aceite', lectura.presion_aceite_combu],
+        ['RPM máximo', lectura.rpm_maximo_combu],
+        ['RPM mínimo', lectura.rpm_minimo_combu],
+        ['Tipo de aceite', lectura.tipo_aceite_combu],
+        ['Nivel de aceite', lectura.nivel_aceite_combu],
+        ['Nivel de refrigerante', lectura.nivel_refrigerante_combu]
+    ];
+
+    return (
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="font-bold text-slate-900">Lecturas de combustión</h3>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {campos.map(([label, value]) => (
+                    <CampoLectura key={label} label={label} value={value} />
+                ))}
+            </div>
+        </article>
+    );
+};
 
 const BotonEditarSeccion = ({ label, onClick, disabled = false }) => (
     <button type="button" onClick={onClick} disabled={disabled} className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50">
@@ -316,22 +348,9 @@ export const DetalleInforme = () => {
         const detalleId = Number(
             detalle?.id_ot_detalle ?? detalle?.informe?.id_ot_detalle
         );
-        const evidenciasRegistradas = normalizarArreglo(
-            detalle?.evidencias
-            ?? detalle?.imagenes
-            ?? detalle?.imagenes_informe
-            ?? detalle?.imagenes_servicio
-        );
 
         if (!Number.isInteger(detalleId) || detalleId <= 0) {
             setError('No se pudo identificar el detalle de la OT');
-            return;
-        }
-
-        if (evidenciasRegistradas.length < 5) {
-            setError(
-                `Debe registrar como mínimo 5 evidencias fotográficas para finalizar el informe. Actualmente tiene ${evidenciasRegistradas.length}.`
-            );
             return;
         }
 
@@ -709,6 +728,7 @@ export const DetalleInforme = () => {
     const tecnicosAdicionales = normalizarArreglo(detalle.tecnicos_adicionales);
     const lecturasCompresor = normalizarArreglo(detalle.lecturas_compresor);
     const lecturasSecador = normalizarArreglo(detalle.lecturas_secador);
+    const lecturasCombustion = normalizarArreglo(detalle.lecturas_combustion);
     const voltajeAmperaje = normalizarArreglo(detalle.voltaje_amperaje);
     const filtrosComponentes = normalizarArreglo(detalle.filtros_y_componentes);
     const evidencias = normalizarArreglo(detalle.evidencias ?? detalle.imagenes ?? detalle.imagenes_informe ?? detalle.imagenes_servicio);
@@ -737,6 +757,7 @@ export const DetalleInforme = () => {
         tecnicos_adicionales: tecnicosAdicionales,
         lecturas_compresor: lecturasCompresor,
         lecturas_secador: lecturasSecador,
+        lecturas_combustion: lecturasCombustion,
         voltaje_amperaje: voltajeAmperaje,
         filtros_y_componentes: filtrosComponentes,
         detalle_informe: detalleInforme,
@@ -745,6 +766,24 @@ export const DetalleInforme = () => {
     };
 
     const hayEdicionActiva = Boolean(seccionEditando) || informeFinalizado;
+    const tipoEquipoNormalizado = String(equipo.tipo_equipo ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase();
+    const esEquipoPortatil = tipoEquipoNormalizado.includes('portatil');
+    const esSecadorRefrigerativo = tipoEquipoNormalizado.includes('secador');
+    const esCompresorEstacionario =
+        tipoEquipoNormalizado.includes('estacionario');
+    const esGrupoElectrogeno =
+        tipoEquipoNormalizado.includes('grupo')
+        || tipoEquipoNormalizado.includes('electrogeno');
+    const muestraCompresor =
+        !esSecadorRefrigerativo
+        && !esGrupoElectrogeno;
+    const muestraCombustion =
+        esEquipoPortatil
+        || esGrupoElectrogeno;
 
     const renderSeccion = ({ seccion, titulo, descripcion, boton, datos, Formulario, Visual, extraProps = {} }) =>
         seccionEditando === seccion ? (
@@ -878,8 +917,33 @@ export const DetalleInforme = () => {
             <section className="space-y-6">
                 <div><h2 className="text-xl font-bold text-slate-900">Información técnica registrada</h2><p className="mt-1 text-sm text-slate-500">Cada apartado puede editarse y guardarse de manera independiente.</p></div>
 
-                {renderSeccion({ seccion: SECCIONES.COMPRESOR, titulo: 'Editar parámetros del compresor', descripcion: 'Los cambios afectan únicamente las lecturas del compresor.', boton: 'Editar compresor', datos: lecturasCompresor, Formulario: LecturasCompresorForm, Visual: ParametrosCompresor, extraProps: { equipo } })}
-                {renderSeccion({ seccion: SECCIONES.SECADOR, titulo: 'Editar parámetros del secador', descripcion: 'Los cambios afectan únicamente las lecturas del secador.', boton: 'Editar secador', datos: lecturasSecador, Formulario: LecturasSecadorForm, Visual: ParametrosSecador })}
+                {muestraCompresor && renderSeccion({ seccion: SECCIONES.COMPRESOR, titulo: 'Editar parámetros del compresor', descripcion: 'Los cambios afectan únicamente las lecturas del compresor.', boton: 'Editar compresor', datos: lecturasCompresor, Formulario: LecturasCompresorForm, Visual: ParametrosCompresor, extraProps: { equipo } })}
+                {(esCompresorEstacionario || esSecadorRefrigerativo) && renderSeccion({
+                    seccion: SECCIONES.SECADOR,
+                    titulo: esSecadorRefrigerativo
+                        ? 'Formulario básico del secador refrigerativo'
+                        : 'Editar parámetros del secador',
+                    descripcion: esSecadorRefrigerativo
+                        ? 'Registre los parámetros principales del secador refrigerativo.'
+                        : 'Los cambios afectan únicamente las lecturas del secador.',
+                    boton: esSecadorRefrigerativo
+                        ? 'Editar secador refrigerativo'
+                        : 'Editar secador',
+                    datos: lecturasSecador,
+                    Formulario: LecturasSecadorForm,
+                    Visual: ParametrosSecador
+                })}
+                {muestraCombustion && renderSeccion({
+                    seccion: SECCIONES.COMBUSTION,
+                    titulo: esGrupoElectrogeno ? 'Formulario básico del grupo electrógeno' : 'Editar lecturas de combustión',
+                    descripcion: esGrupoElectrogeno
+                        ? 'Registre los datos básicos del motor del grupo electrógeno.'
+                        : 'Los cambios afectan únicamente las lecturas del motor de combustión.',
+                    boton: esGrupoElectrogeno ? 'Editar grupo electrógeno' : 'Editar combustión',
+                    datos: lecturasCombustion,
+                    Formulario: CombustionForm,
+                    Visual: ParametrosCombustion
+                })}
                 {renderSeccion({ seccion: SECCIONES.ELECTRICOS, titulo: 'Editar parámetros eléctricos', descripcion: 'Los cambios afectan únicamente voltajes y amperajes.', boton: 'Editar parámetros eléctricos', datos: voltajeAmperaje, Formulario: VoltajeAmperajeForm, Visual: ParametrosElectricos })}
                 {renderSeccion({ seccion: SECCIONES.FILTROS, titulo: 'Editar filtros y componentes', descripcion: 'Los cambios afectan únicamente filtros y componentes.', boton: 'Editar filtros y componentes', datos: filtrosComponentes, Formulario: FiltrosComponentesForm, Visual: FiltrosSection })}
                 {renderSeccion({ seccion: SECCIONES.HALLAZGOS, titulo: 'Editar hallazgos del trabajo', descripcion: 'Los cambios afectan la descripción del trabajo, recomendaciones y conclusiones.', boton: 'Editar hallazgos', datos: [detalleInforme], Formulario: HallazgosTrabajoForm, Visual: HallazgosTrabajo })}

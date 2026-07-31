@@ -497,6 +497,13 @@ export const DetalleOrdenTrabajo = () => {
                             ? equipo.servicios
                             : [];
 
+                        const requiereInforme = servicios.some(
+                            (servicio) =>
+                                String(servicio.codigo_tipo_servicio || '')
+                                    .trim()
+                                    .toUpperCase() !== 'ACTIVIDAD_DE_APOYO'
+                        );
+
                         return (
                             <article
                                 key={equipo.id_ot_detalle}
@@ -537,7 +544,11 @@ export const DetalleOrdenTrabajo = () => {
                                             {equipo.estado_equipo}
                                         </span>
 
-                                        {puedeActualizarEstado && equipo.id_informe ? (
+                                        {puedeActualizarEstado && !requiereInforme ? (
+                                            <span className="text-xs font-medium text-emerald-600">
+                                                No requiere informe técnico
+                                            </span>
+                                        ) : puedeActualizarEstado && equipo.id_informe ? (
                                             <button
                                                 type="button"
                                                 onClick={() => navigate(`/tecnico/informes/${equipo.id_informe}`)}

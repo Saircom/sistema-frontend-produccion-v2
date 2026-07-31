@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Lock, User, Loader2, ShieldCheck, Fingerprint } from "lucide-react";
 
 const Login = () => {
-  const { login } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
 
   const [dni, setDni] = useState(localStorage.getItem("dni") || "");
@@ -15,8 +15,8 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem("token")) navigate("/inicio");
-  }, [navigate]);
+    if (user) navigate("/inicio", { replace: true });
+  }, [user, navigate]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();

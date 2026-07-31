@@ -93,9 +93,6 @@ const UsuarioForm = ({ formData, onChange, esEdicion, puedeEditarPassword = fals
         value={formData.password || ""} 
         onChange={onChange} 
         required={!esEdicion} 
-        minLength={10}
-        maxLength={128}
-        autoComplete="new-password"
         className="w-full px-4 py-2.5 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm" 
       />
     </div>}

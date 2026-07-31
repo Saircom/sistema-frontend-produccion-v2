@@ -12,7 +12,20 @@ const ResponsableCierreForm = ({ data = {}, onChange }) => {
 
   const guardarTrazo = () => {
     if (firmaRef.current && !firmaRef.current.isEmpty()) {
-      onChange('firma', firmaRef.current.getCanvas().toDataURL('image/png'));
+      const origen = firmaRef.current.getCanvas();
+      const destino = document.createElement('canvas');
+      const anchoMaximo = 800;
+      const escala = Math.min(1, anchoMaximo / origen.width);
+
+      destino.width = Math.max(1, Math.round(origen.width * escala));
+      destino.height = Math.max(1, Math.round(origen.height * escala));
+
+      const contexto = destino.getContext('2d');
+      contexto.fillStyle = '#ffffff';
+      contexto.fillRect(0, 0, destino.width, destino.height);
+      contexto.drawImage(origen, 0, 0, destino.width, destino.height);
+
+      onChange('firma', destino.toDataURL('image/webp', 0.8));
     }
   };
 

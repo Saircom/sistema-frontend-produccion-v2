@@ -22,6 +22,7 @@ import { tecnicoOTService } from './service/tecnicoOT.service.js';
 import { tiempoService } from './service/time.service.js';
 import { useAuth } from '../../context/authContext.jsx';
 import { notify } from '../../utils/notifications.jsx';
+import { cacheKeys, offlineStore } from '../../services/offline.service.js';
 
 const CONFIRMACIONES_TIEMPO = {
     llegada: {
@@ -200,10 +201,10 @@ export const DetalleOrdenTecnico = () => {
             setError('');
             setMensaje('');
 
+            let resultado;
+
             if (accion === 'llegada') {
-                await tiempoService.registrarLlegada(
-                    idOtDetalle
-                );
+                resultado = await tiempoService.registrarLlegada(idOtDetalle);
 
                 setMensaje(
                     'Hora de llegada registrada correctamente'
@@ -211,9 +212,7 @@ export const DetalleOrdenTecnico = () => {
             }
 
             if (accion === 'inicio') {
-                await tiempoService.registrarInicio(
-                    idOtDetalle
-                );
+                resultado = await tiempoService.registrarInicio(idOtDetalle);
 
                 setMensaje(
                     'Hora de inicio registrada correctamente'
@@ -221,16 +220,44 @@ export const DetalleOrdenTecnico = () => {
             }
 
             if (accion === 'fin') {
-                await tiempoService.registrarFin(
-                    idOtDetalle
-                );
+                resultado = await tiempoService.registrarFin(idOtDetalle);
 
                 setMensaje(
                     'Hora de finalización registrada correctamente'
                 );
             }
 
-            await cargarOrden();
+            if (resultado?.pendingSync) {
+                const field = {
+                    llegada: 'fecha_hora_llegada',
+                    inicio: 'fecha_hora_inicio',
+                    fin: 'fecha_hora_fin'
+                }[accion];
+                setOrden(previous => {
+                    const updatedOrder = {
+                        ...previous,
+                        equipos: previous.equipos.map(equipment =>
+                        Number(equipment.id_ot_detalle) === Number(idOtDetalle)
+                            ? {
+                                ...equipment,
+                                tiempos: {
+                                    ...(equipment.tiempos ?? {}),
+                                    [field]: resultado.registeredAt
+                                }
+                            }
+                            : equipment
+                        )
+                    };
+                    offlineStore.set(
+                        cacheKeys.technicianOrder(idTecnico, idOt),
+                        updatedOrder
+                    );
+                    return updatedOrder;
+                });
+                setMensaje(resultado.message);
+            } else {
+                await cargarOrden();
+            }
         } catch (error) {
             console.error(
                 `Error al registrar ${accion}:`,
@@ -296,6 +323,10 @@ export const DetalleOrdenTecnico = () => {
     const equipos = Array.isArray(orden.equipos)
         ? orden.equipos
         : [];
+
+    const serviciosCotizados = equipos.flatMap((equipo) =>
+        Array.isArray(equipo.servicios) ? equipo.servicios : []
+    );
 
     return (
         <section className="space-y-6 p-6">
@@ -369,6 +400,51 @@ export const DetalleOrdenTecnico = () => {
                     {orden.estado}
                 </span>
             </header>
+
+            <article className="rounded-xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+                <div className="flex items-center gap-2">
+                    <ClipboardList className="h-5 w-5 text-blue-600" />
+                    <h2 className="text-lg font-bold text-slate-900">
+                        Trabajo por realizar
+                    </h2>
+                </div>
+
+                <div className="mt-4 grid gap-5 lg:grid-cols-2">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Nota de la cotización
+                        </p>
+                        <p className="mt-2 whitespace-pre-wrap text-sm text-slate-800">
+                            {orden.nota?.trim() || 'La cotización no tiene una nota registrada.'}
+                        </p>
+                    </div>
+
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Tipos de servicio
+                        </p>
+                        {serviciosCotizados.length > 0 ? (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                                {serviciosCotizados.map((servicio) => (
+                                    <span
+                                        key={servicio.id_ot_detalle_servicio}
+                                        className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-blue-800"
+                                    >
+                                        <strong>{servicio.nombre_tipo_servicio}</strong>
+                                        {servicio.nombre_subtipo
+                                            ? ` · ${servicio.nombre_subtipo}`
+                                            : ''}
+                                    </span>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="mt-2 text-sm text-slate-600">
+                                No hay servicios registrados.
+                            </p>
+                        )}
+                    </div>
+                </div>
+            </article>
 
             <div className="grid gap-5 xl:grid-cols-2">
                 <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -480,17 +556,17 @@ export const DetalleOrdenTecnico = () => {
             <section className="space-y-4">
                 <div>
                     <h2 className="text-xl font-bold text-slate-900">
-                        Equipos asignados
+                        Servicios asignados
                     </h2>
 
                     <p className="text-sm text-slate-500">
-                        Registre los tiempos y complete un informe independiente por equipo.
+                        Registre los tiempos y complete el informe cuando el tipo de servicio lo requiera.
                     </p>
                 </div>
 
                 {equipos.length === 0 ? (
                     <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-5 text-yellow-800">
-                        Esta orden no tiene equipos asociados.
+                        Esta orden no tiene servicios asociados.
                     </div>
                 ) : (
                     equipos.map((equipo, index) => {
@@ -502,6 +578,13 @@ export const DetalleOrdenTecnico = () => {
                         )
                             ? equipo.servicios
                             : [];
+
+                        const requiereInforme = servicios.some(
+                            (servicio) =>
+                                String(servicio.codigo_tipo_servicio || '')
+                                    .trim()
+                                    .toUpperCase() !== 'ACTIVIDAD_DE_APOYO'
+                        );
 
                         const tieneLlegada =
                             Boolean(
@@ -526,27 +609,30 @@ export const DetalleOrdenTecnico = () => {
                                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                                     <div>
                                         <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                                            Equipo {index + 1}
+                                            {equipo.sin_equipo
+                                                ? 'Servicio sin equipo asociado'
+                                                : `Equipo ${index + 1}`}
                                         </p>
 
                                         <h3 className="mt-1 text-xl font-bold text-slate-900">
-                                            {equipo.tipo_equipo ||
-                                                'Equipo sin tipo'}
+                                            {equipo.sin_equipo
+                                                ? 'Actividad programada'
+                                                : equipo.tipo_equipo || 'Equipo sin tipo'}
                                         </h3>
 
-                                        <p className="mt-1 text-sm text-slate-600">
+                                        {!equipo.sin_equipo && <p className="mt-1 text-sm text-slate-600">
                                             {equipo.marca ||
                                                 'Sin marca'}{' '}
                                             ·{' '}
                                             {equipo.modelo ||
                                                 'Sin modelo'}
-                                        </p>
+                                        </p>}
 
-                                        <p className="text-sm text-slate-500">
+                                        {!equipo.sin_equipo && <p className="text-sm text-slate-500">
                                             Serie:{' '}
                                             {equipo.serie ||
                                                 'No registrada'}
-                                        </p>
+                                        </p>}
                                     </div>
 
                                     <span
@@ -558,7 +644,7 @@ export const DetalleOrdenTecnico = () => {
                                     </span>
                                 </div>
 
-                                <div className="mt-5 grid gap-4 sm:grid-cols-3">
+                                {!equipo.sin_equipo && <div className="mt-5 grid gap-4 sm:grid-cols-3">
                                     <div className="rounded-lg bg-slate-50 p-3">
                                         <p className="text-xs uppercase text-slate-500">
                                             Sede
@@ -591,7 +677,7 @@ export const DetalleOrdenTecnico = () => {
                                                 'No registrado'}
                                         </p>
                                     </div>
-                                </div>
+                                </div>}
 
                                 <div className="mt-5">
                                     <div className="flex items-center gap-2">
@@ -771,6 +857,7 @@ export const DetalleOrdenTecnico = () => {
                                 </div>
 
                                 <div className="mt-5 flex justify-end">
+                                    {requiereInforme ? (
                                     <button
                                         type="button"
                                         disabled={!tieneInicio}
@@ -782,6 +869,11 @@ export const DetalleOrdenTecnico = () => {
                                         <ClipboardList className="h-4 w-4" />
                                         Completar informe
                                     </button>
+                                    ) : (
+                                        <span className="rounded-lg bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700">
+                                            Actividad de apoyo: no requiere informe técnico
+                                        </span>
+                                    )}
                                 </div>
                             </article>
                         );
