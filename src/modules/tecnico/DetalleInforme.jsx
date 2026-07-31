@@ -316,9 +316,22 @@ export const DetalleInforme = () => {
         const detalleId = Number(
             detalle?.id_ot_detalle ?? detalle?.informe?.id_ot_detalle
         );
+        const evidenciasRegistradas = normalizarArreglo(
+            detalle?.evidencias
+            ?? detalle?.imagenes
+            ?? detalle?.imagenes_informe
+            ?? detalle?.imagenes_servicio
+        );
 
         if (!Number.isInteger(detalleId) || detalleId <= 0) {
             setError('No se pudo identificar el detalle de la OT');
+            return;
+        }
+
+        if (evidenciasRegistradas.length < 5) {
+            setError(
+                `Debe registrar como mínimo 5 evidencias fotográficas para finalizar el informe. Actualmente tiene ${evidenciasRegistradas.length}.`
+            );
             return;
         }
 

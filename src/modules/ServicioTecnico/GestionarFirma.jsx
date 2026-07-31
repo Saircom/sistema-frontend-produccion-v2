@@ -1,10 +1,9 @@
 import React, { useRef, useState, useEffect } from "react";
 import SignatureCanvas from "react-signature-canvas";
 import Swal from "sweetalert2";
-import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import { Trash2, Save, ArrowLeft } from "lucide-react";
-import { ApiWebURL } from "../../utils/index";
+import api from "../../services/api.service.js";
 
 const GestionarFirma = () => {
     const { id_servicio } = useParams();
@@ -30,30 +29,24 @@ const GestionarFirma = () => {
             return Swal.fire("Nombre requerido", "Ingrese el nombre del responsable.", "warning");
         }
 
-        const token = localStorage.getItem("token");
-
         try {
             setCargando(true);
             const signatureImage = sigCanvas.current.getTrimmedCanvas().toDataURL("image/png");
-            const blob = await (await fetch(signatureImage)).blob();
-            const firmaFile = new File([blob], `firma_${id_servicio}.png`, { type: "image/png" });
-
-            const finalData = new FormData();
-            finalData.append("firma", firmaFile);
-            finalData.append("encargado", encargado);
-
-            await axios.post(`${ApiWebURL}/servicio/${id_servicio}/firma`, finalData, {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                    "Authorization": `Bearer ${token}`
-                }
+            await api.post("/firma", {
+                id_servicio: Number(id_servicio),
+                firma: signatureImage,
+                encargado: encargado.trim()
             });
 
             await Swal.fire("Éxito", "Firma guardada correctamente.", "success");
             navigate(-1); 
         } catch (err) {
             console.error("Error al subir firma:", err);
-            Swal.fire("Error", "No se pudo conectar con el servidor. Verifica que el backend esté encendido.", "error");
+            Swal.fire(
+                "Error",
+                err?.response?.data?.message || err?.message || "No se pudo guardar la firma.",
+                "error"
+            );
         } finally {
             setCargando(false);
         }

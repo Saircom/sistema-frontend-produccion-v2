@@ -91,8 +91,11 @@ function Usuarios() {
       }
       setIsModalOpen(false);
       leerServicio();
-    } catch {
-      notify.error("Error", "No se pudo guardar el usuario");
+    } catch (error) {
+      notify.error(
+        "Error",
+        error?.response?.data?.message || error?.message || "No se pudo guardar el usuario"
+      );
     } finally {
       setSubmitting(false);
     }
