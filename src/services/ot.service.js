@@ -56,5 +56,10 @@ export const otService = {
         );
 
         return response.data?.data ?? null;
+    },
+
+    async actualizarProgramacion(idOt, data) {
+        const response = await api.put(`/ordentrabajo/${idOt}/programacion`, data);
+        return response.data?.data ?? null;
     }
 };

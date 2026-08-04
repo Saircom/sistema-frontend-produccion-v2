@@ -993,7 +993,7 @@ export const DetalleInforme = () => {
                 {historial.length === 0 ? <p className="mt-4 text-sm text-slate-500">Este equipo todavía no tiene informes anteriores.</p> : (
                     <div className="mt-4 overflow-x-auto">
                         <table className="min-w-full divide-y divide-slate-200">
-                            <thead className="bg-slate-50"><tr><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">OT</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Fecha</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Cotización</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Servicios</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Estado</th><th className="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-500">Acción</th></tr></thead>
+                            <thead className="bg-slate-50"><tr><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">OT</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Fecha</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Cotización</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Servicios</th><th className="min-w-80 px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Trabajo realizado</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-slate-500">Estado</th><th className="px-4 py-3 text-right text-xs font-semibold uppercase text-slate-500">Acción</th></tr></thead>
                             <tbody className="divide-y divide-slate-100 bg-white">
                                 {historial.map((r, i) => (
                                     <tr key={r.id_ot_detalle ?? r.id_informe ?? i} className="hover:bg-slate-50">
@@ -1001,6 +1001,13 @@ export const DetalleInforme = () => {
                                         <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700">{formatearFecha(r.fecha_programada)}</td>
                                         <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700">{r.numero_cotizacion || 'No registrada'}</td>
                                         <td className="max-w-sm px-4 py-3 text-sm text-slate-700">{r.servicios_realizados || 'No registrados'}</td>
+                                        <td className="min-w-80 max-w-xl px-4 py-3 align-top text-sm text-slate-700">
+                                            <dl className="space-y-2">
+                                                <div><dt className="font-semibold text-slate-900">Descripción</dt><dd className="whitespace-pre-line">{r.descripcionTrabajo || 'No registrada'}</dd></div>
+                                                <div><dt className="font-semibold text-slate-900">Recomendaciones</dt><dd className="whitespace-pre-line">{r.recomendaciones || 'No registradas'}</dd></div>
+                                                <div><dt className="font-semibold text-slate-900">Conclusiones</dt><dd className="whitespace-pre-line">{r.conclusiones || 'No registradas'}</dd></div>
+                                            </dl>
+                                        </td>
                                         <td className="whitespace-nowrap px-4 py-3"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${obtenerClaseEstado(r.estado_equipo)}`}>{r.estado_equipo || 'Pendiente'}</span></td>
                                         <td className="whitespace-nowrap px-4 py-3 text-right">{r.id_informe ? <button type="button" onClick={() => verInformeHistorico(r.id_informe)} className="text-sm font-semibold text-blue-600 hover:text-blue-800">Ver informe</button> : <span className="text-xs text-slate-400">Sin informe</span>}</td>
                                     </tr>

@@ -1,7 +1,7 @@
 
-/* eslint-disable react/prop-types */
 import { useEffect, useState } from 'react';
 import Select from 'react-select';
+import { CheckCircle2, Copy, Plus, Save, Trash2 } from 'lucide-react';
 import CotizacionService from '../../services/cotizaciones.service.js';
 import { clientService } from '../../services/client.service.js';
 import { equipmentService } from '../../services/equipment.service.js';
@@ -19,6 +19,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
     const [equipos, setEquipos] = useState([]);
     const [tiposBase, setTiposBase] = useState([]);
     const [guardando, setGuardando] = useState(false);
+    const [errorFormulario, setErrorFormulario] = useState('');
 
     const [header, setHeader] = useState({
         idCliente: null,
@@ -225,6 +226,20 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
         ]);
     };
 
+    const duplicarDetalle = (index) => {
+        setDetalles((detallesActuales) => {
+            const origen = detallesActuales[index];
+            return [
+                ...detallesActuales,
+                {
+                    ...origen,
+                    idServicios: [...origen.idServicios],
+                    subtiposDisponibles: [...origen.subtiposDisponibles]
+                }
+            ];
+        });
+    };
+
     const eliminarDetalle = (index) => {
         setDetalles((detallesActuales) => {
             if (detallesActuales.length === 1) {
@@ -274,9 +289,11 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
         const errorValidacion = validarFormulario();
 
         if (errorValidacion) {
-            alert(errorValidacion);
+            setErrorFormulario(errorValidacion);
             return;
         }
+
+        setErrorFormulario('');
 
         const payload = {
             idCliente: header.idCliente.value,
@@ -304,13 +321,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                 response?.data?.data?.numeroCotizacion ||
                 response?.data?.numeroCotizacion;
 
-            alert(
-                numeroCotizacion
-                    ? `Cotización N.° ${numeroCotizacion} guardada exitosamente`
-                    : 'Cotización guardada exitosamente'
-            );
-
-            onSaveSuccess?.(response);
+            onSaveSuccess?.({ response, numeroCotizacion });
 
             setHeader({
                 idCliente: null,
@@ -332,26 +343,54 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                 error.message ||
                 'No se pudo guardar la cotización';
 
-            alert(`Error: ${mensaje}`);
+            setErrorFormulario(mensaje);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setGuardando(false);
         }
     };
 
+    const serviciosSeleccionados = detalles.reduce(
+        (total, detalle) => total + detalle.idServicios.length,
+        0
+    );
+    const datosGeneralesCompletos = Boolean(
+        header.idCliente?.value && header.tipoPago?.value && header.centroCosto?.value
+    );
+    const serviciosCompletos = detalles.every(
+        detalle => detalle.idTipoServicio?.value && detalle.idServicios.length > 0
+    );
+
     return (
         <form
             onSubmit={handleSubmit}
-            className="max-w-7xl mx-auto bg-white shadow-lg rounded-xl p-6 space-y-6"
+            className="mx-auto max-w-7xl space-y-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 lg:p-8"
         >
-            <div>
-                <h2 className="text-2xl font-bold text-gray-800">
+            <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                <h2 className="text-2xl font-bold text-slate-900">
                     {initialData ? 'Editar cotización' : 'Nueva cotización'}
                 </h2>
 
                 <p className="text-sm text-gray-500 mt-1">
                     Registre el cliente y los servicios. El equipo es opcional.
                 </p>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs font-semibold">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 ${datosGeneralesCompletos ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}><CheckCircle2 className="h-4 w-4" /> Datos generales</span>
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 ${serviciosCompletos ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}><CheckCircle2 className="h-4 w-4" /> Servicios</span>
+                </div>
             </div>
+
+            {errorFormulario && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{errorFormulario}</div>}
+
+            {initialData?.estado?.toLowerCase() === 'aprobada' && (
+                <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    Esta cotización ya está aprobada. Los equipos o servicios que agregue quedarán asociados sin cambiar su estado.
+                </div>
+            )}
+
+            <div className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">1</span><div><h3 className="font-bold text-slate-900">Datos generales</h3><p className="text-sm text-slate-500">Cliente, pago y referencia administrativa.</p></div></div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="border border-dashed border-gray-300 bg-gray-50 p-3 rounded-lg">
@@ -364,7 +403,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                     </p>
                 </div>
 
-                <Select
+                <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Cliente</span><Select
                     placeholder="Buscar cliente..."
                     options={clientes.map((cliente) => ({
                         value: cliente.id_cliente,
@@ -379,9 +418,9 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                     }
                     isClearable
                     noOptionsMessage={() => 'No se encontraron clientes'}
-                />
+                /></label>
 
-                <Select
+                <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Tipo de pago</span><Select
                     placeholder="Tipo de pago"
                     options={opcionesTipoPago}
                     value={header.tipoPago}
@@ -392,9 +431,9 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                         }))
                     }
                     isClearable
-                />
+                /></label>
 
-                <Select
+                <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Centro de costo</span><Select
                     placeholder="Centro de costo"
                     options={opcionesCentroCosto}
                     value={header.centroCosto}
@@ -405,9 +444,11 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                         }))
                     }
                     isClearable
-                />
+                /></label>
             </div>
 
+            <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-slate-700">Nota de la cotización <span className="font-normal text-slate-400">(opcional)</span></span>
             <textarea
                 className="w-full border border-gray-300 p-3 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Notas adicionales..."
@@ -420,9 +461,11 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                     }))
                 }
             />
+            </label>
 
             <div className="space-y-4">
-                <div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">2</span><div>
                     <h3 className="text-lg font-semibold text-gray-800">
                         Servicios y equipos
                     </h3>
@@ -430,13 +473,24 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                     <p className="text-sm text-gray-500">
                         Seleccione el tipo y subtipo de servicio. Asocie un equipo solo cuando corresponda.
                     </p>
+                    </div></div>
+                    <div className="rounded-lg bg-blue-50 px-4 py-2 text-sm text-blue-700"><strong>{detalles.length}</strong> bloque(s) · <strong>{serviciosSeleccionados}</strong> servicio(s)</div>
                 </div>
 
                 {detalles.map((fila, index) => (
                     <div
                         key={index}
-                        className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center bg-gray-50 border border-gray-200 p-4 rounded-lg"
+                        className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 shadow-sm"
                     >
+                        <div className="mb-4 flex items-center justify-between border-b border-slate-200 pb-3">
+                            <p className="font-bold text-slate-800">Bloque de servicio {index + 1}</p>
+                            <div className="flex gap-1">
+                                <button type="button" onClick={() => duplicarDetalle(index)} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100" title="Duplicar este bloque"><Copy className="h-4 w-4" /> Duplicar</button>
+                                <button type="button" onClick={() => eliminarDetalle(index)} disabled={detalles.length === 1} className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-300"><Trash2 className="h-4 w-4" /> Eliminar</button>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                        <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Equipo <span className="font-normal text-slate-400">(opcional)</span></span>
                         <Select
                             placeholder="Equipo (opcional)"
                             options={equipos.map((equipo) => ({
@@ -467,7 +521,8 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                                     : 'Seleccione primero un cliente'
                             }
                         />
-
+                        </label>
+                        <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Tipo de servicio</span>
                         <Select
                             placeholder="Tipo de servicio"
                             options={tiposBase.map((tipo) => ({
@@ -483,7 +538,8 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                             }
                             isClearable
                         />
-
+                        </label>
+                        <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Subservicios</span>
                         <Select
                             isMulti
                             placeholder="Seleccionar subtipos..."
@@ -502,33 +558,27 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                                 'No hay subtipos disponibles'
                             }
                         />
-
-                        <button
-                            type="button"
-                            onClick={() => eliminarDetalle(index)}
-                            disabled={detalles.length === 1}
-                            className="text-red-600 font-semibold px-3 py-2 rounded-lg hover:bg-red-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-                        >
-                            Eliminar
-                        </button>
+                        </label>
+                        </div>
                     </div>
                 ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="sticky bottom-3 z-10 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
                 <button
                     type="button"
                     onClick={agregarDetalle}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 font-semibold text-blue-700 hover:bg-blue-100"
                 >
-                    + Agregar servicio
+                    <Plus className="h-5 w-5" /> Agregar otro servicio
                 </button>
 
                 <button
                     type="submit"
                     disabled={guardando}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold disabled:bg-blue-300 disabled:cursor-not-allowed"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-7 py-2.5 font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
                 >
+                    {guardando ? null : <Save className="h-5 w-5" />}
                     {guardando
                         ? 'Guardando...'
                         : initialData ? 'Guardar cambios' : 'Guardar cotización'}

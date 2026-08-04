@@ -8,15 +8,21 @@ import {
     Eye,
     Loader2,
     MapPin,
+    Pencil,
     Phone,
+    Save,
     Truck,
     UserRound,
     WalletCards,
-    Wrench
+    Wrench,
+    X
 } from 'lucide-react';
 
 import { otService } from '../../services/ot.service.js';
 import { useAuth } from '../../context/authContext.jsx';
+import { UsuarioService } from '../../services/user.service.js';
+import { movilidadService } from '../../services/movilidad.service.js';
+import { isSuperAdmin } from '../../utils/permissions.js';
 
 const ESTADOS_OT = ['Programada', 'En Proceso', 'Finalizada'];
 
@@ -53,6 +59,17 @@ const formatearFecha = (fecha) => {
     }).format(new Date(fecha));
 };
 
+const fechaParaInput = fecha => {
+    if (!fecha) return '';
+    const valor = new Date(fecha);
+    const local = new Date(valor.getTime() - valor.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16);
+};
+
+const obtenerArray = respuesta => Array.isArray(respuesta)
+    ? respuesta
+    : (respuesta?.data?.data ?? respuesta?.data ?? []);
+
 export const DetalleOrdenTrabajo = () => {
     const { idOt } = useParams();
     const navigate = useNavigate();
@@ -64,10 +81,63 @@ export const DetalleOrdenTrabajo = () => {
     const [nuevoEstado, setNuevoEstado] = useState('Programada');
     const [actualizandoEstado, setActualizandoEstado] = useState(false);
     const [mensaje, setMensaje] = useState('');
+    const [editandoProgramacion, setEditandoProgramacion] = useState(false);
+    const [guardandoProgramacion, setGuardandoProgramacion] = useState(false);
+    const [tecnicos, setTecnicos] = useState([]);
+    const [movilidades, setMovilidades] = useState([]);
+    const [programacion, setProgramacion] = useState({
+        idTecnicoResponsable: '', idsTecnicosApoyo: [], idMovilidad: '',
+        fechaProgramada: '', fechaFinProgramada: ''
+    });
 
     const puedeActualizarEstado = ['ADMINISTRADOR', 'PLANNER', 'SUPERADMINISTRADOR'].includes(
         String(user?.rol ?? '').trim().toUpperCase()
     );
+    const puedeEditarProgramacion = isSuperAdmin(user) && orden?.estado === 'Programada';
+
+    const abrirEdicionProgramacion = async () => {
+        try {
+            setError('');
+            const [respuestaTecnicos, respuestaMovilidades] = await Promise.all([
+                UsuarioService.getTecnicos(),
+                movilidadService.getAll()
+            ]);
+            setTecnicos(obtenerArray(respuestaTecnicos).filter(item => Number(item.estado) === 1));
+            setMovilidades(obtenerArray(respuestaMovilidades).filter(item => item.estado_disponibilidad !== 'En mantenimiento'));
+            setProgramacion({
+                idTecnicoResponsable: String(orden.id_tecnico_responsable),
+                idsTecnicosApoyo: (orden.tecnicos_adicionales || []).map(item => Number(item.id_usuario)),
+                idMovilidad: String(orden.id_movilidad),
+                fechaProgramada: fechaParaInput(orden.fecha_programada),
+                fechaFinProgramada: fechaParaInput(orden.fecha_fin_programada)
+            });
+            setEditandoProgramacion(true);
+        } catch (err) {
+            setError(err?.response?.data?.message || 'No se pudieron cargar los datos para editar la OT');
+        }
+    };
+
+    const guardarProgramacion = async event => {
+        event.preventDefault();
+        try {
+            setGuardandoProgramacion(true);
+            setError('');
+            const actualizada = await otService.actualizarProgramacion(orden.id_ot, {
+                idTecnicoResponsable: Number(programacion.idTecnicoResponsable),
+                idsTecnicosApoyo: programacion.idsTecnicosApoyo.map(Number),
+                idMovilidad: Number(programacion.idMovilidad),
+                fechaProgramada: programacion.fechaProgramada,
+                fechaFinProgramada: programacion.fechaFinProgramada
+            });
+            setOrden(actualizada);
+            setEditandoProgramacion(false);
+            setMensaje('Programación de la OT corregida correctamente.');
+        } catch (err) {
+            setError(err?.response?.data?.message || err?.message || 'No se pudo actualizar la programación');
+        } finally {
+            setGuardandoProgramacion(false);
+        }
+    };
 
     useEffect(() => {
         const cargarOrden = async () => {
@@ -275,6 +345,39 @@ export const DetalleOrdenTrabajo = () => {
                 <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                     {error}
                 </div>
+            )}
+
+            {puedeEditarProgramacion && !editandoProgramacion && (
+                <div className="flex justify-end">
+                    <button type="button" onClick={abrirEdicionProgramacion} className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700">
+                        <Pencil className="h-4 w-4" /> Corregir programación
+                    </button>
+                </div>
+            )}
+
+            {editandoProgramacion && (
+                <form onSubmit={guardarProgramacion} className="rounded-xl border border-violet-200 bg-violet-50 p-5 shadow-sm">
+                    <div className="mb-4 flex items-center justify-between">
+                        <div><h2 className="font-bold text-violet-950">Corregir OT programada</h2><p className="text-sm text-violet-700">Solo el Superadministrador puede cambiar responsables, movilidad y fechas.</p></div>
+                        <button type="button" onClick={() => setEditandoProgramacion(false)} className="rounded-lg p-2 text-violet-700 hover:bg-violet-100"><X className="h-5 w-5" /></button>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <label className="text-sm font-semibold text-slate-700">Técnico responsable
+                            <select required value={programacion.idTecnicoResponsable} onChange={e => setProgramacion(p => ({ ...p, idTecnicoResponsable: e.target.value, idsTecnicosApoyo: p.idsTecnicosApoyo.filter(id => String(id) !== e.target.value) }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2.5">
+                                <option value="">Seleccione</option>{tecnicos.map(t => <option key={t.id_usuario} value={t.id_usuario}>{t.nombres} {t.apellidos}</option>)}
+                            </select>
+                        </label>
+                        <label className="text-sm font-semibold text-slate-700">Movilidad
+                            <select required value={programacion.idMovilidad} onChange={e => setProgramacion(p => ({ ...p, idMovilidad: e.target.value }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2.5">
+                                <option value="">Seleccione</option>{movilidades.map(m => <option key={m.id_movilidad} value={m.id_movilidad}>{m.placa} - {m.marca} {m.modelo}</option>)}
+                            </select>
+                        </label>
+                        <label className="text-sm font-semibold text-slate-700">Inicio programado<input required type="datetime-local" value={programacion.fechaProgramada} onChange={e => setProgramacion(p => ({ ...p, fechaProgramada: e.target.value }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2.5" /></label>
+                        <label className="text-sm font-semibold text-slate-700">Fin programado<input required type="datetime-local" min={programacion.fechaProgramada || undefined} value={programacion.fechaFinProgramada} onChange={e => setProgramacion(p => ({ ...p, fechaFinProgramada: e.target.value }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2.5" /></label>
+                    </div>
+                    <fieldset className="mt-4"><legend className="text-sm font-semibold text-slate-700">Técnicos de apoyo</legend><div className="mt-2 flex flex-wrap gap-2">{tecnicos.filter(t => String(t.id_usuario) !== String(programacion.idTecnicoResponsable)).map(t => { const activo = programacion.idsTecnicosApoyo.includes(Number(t.id_usuario)); return <button key={t.id_usuario} type="button" onClick={() => setProgramacion(p => ({ ...p, idsTecnicosApoyo: activo ? p.idsTecnicosApoyo.filter(id => id !== Number(t.id_usuario)) : [...p.idsTecnicosApoyo, Number(t.id_usuario)] }))} className={`rounded-full border px-3 py-1.5 text-sm ${activo ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-300 bg-white text-slate-700'}`}>{t.nombres} {t.apellidos}</button>; })}</div></fieldset>
+                    <div className="mt-5 flex justify-end"><button disabled={guardandoProgramacion} className="inline-flex items-center gap-2 rounded-lg bg-violet-600 px-5 py-2.5 font-semibold text-white disabled:opacity-60"><Save className="h-4 w-4" />{guardandoProgramacion ? 'Guardando...' : 'Guardar corrección'}</button></div>
+                </form>
             )}
 
             <div className="grid gap-6 xl:grid-cols-2">

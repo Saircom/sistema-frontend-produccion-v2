@@ -90,7 +90,9 @@ export const HistorialInformes = () => {
                             <p className="text-gray-700 mb-4 break-words">{inf.descripcionTrabajo}</p>
                             <div className="bg-blue-50 p-4 rounded-lg">
                                 <p className="text-sm font-semibold text-blue-900 mb-1">Recomendaciones:</p>
-                                <p className="text-sm text-blue-800 break-words">{inf.recomendaciones}</p>
+                                <p className="text-sm text-blue-800 break-words">{inf.recomendaciones || 'No registradas'}</p>
+                                <p className="mt-3 text-sm font-semibold text-blue-900 mb-1">Conclusiones:</p>
+                                <p className="text-sm text-blue-800 break-words">{inf.conclusiones || 'No registradas'}</p>
                             </div>
                         </div>
                     ))

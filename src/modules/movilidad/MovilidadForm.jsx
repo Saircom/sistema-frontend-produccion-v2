@@ -44,7 +44,7 @@ export const MovilidadForm = ({ movilidadData, onSuccess }) => {
 
         try {
             if (formData.id_movilidad) {
-                await movilidadService.actualizarMovilidad(formData.id_movilidad, formData);
+                await movilidadService.update(formData.id_movilidad, formData);
                 alert('Vehículo actualizado con éxito');
             } else {
                 await movilidadService.create(formData);
@@ -58,7 +58,7 @@ export const MovilidadForm = ({ movilidadData, onSuccess }) => {
             if (error.response) {
                 console.error("Datos del error del servidor:", error.response.data);
             }
-            alert(`Error: ${error.message || 'Ocurrió un error inesperado'}`);
+            alert(`Error: ${error.response?.data?.error || error.response?.data?.message || error.message || 'Ocurrió un error inesperado'}`);
         } finally {
             setIsSubmitting(false);
         }
@@ -91,8 +91,8 @@ export const MovilidadForm = ({ movilidadData, onSuccess }) => {
                 <label className="block text-sm font-medium text-gray-700">Estado</label>
                 <select name="estado_disponibilidad" value={formData.estado_disponibilidad} onChange={handleChange} className="w-full p-2 border rounded mt-1">
                     <option value="Disponible">Disponible</option>
-                    <option value="En Mantenimiento">En Mantenimiento</option>
-                    <option value="Ocupado">Ocupado</option>
+                    <option value="En mantenimiento">En mantenimiento</option>
+                    <option value="En uso">En uso</option>
                 </select>
             </div>
 

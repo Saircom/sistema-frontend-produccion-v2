@@ -186,10 +186,7 @@ const ProgramarOT = () => {
                 idsTecnicosApoyo: form.idsTecnicosApoyo.map(Number),
                 idMovilidad: Number(form.idMovilidad),
                 fechaProgramada: form.fechaProgramada,
-                fechaFinProgramada: form.fechaFinProgramada,
-
-                // Temporal mientras pruebas sin token
-                idUsuarioCreador: 1
+                fechaFinProgramada: form.fechaFinProgramada
             });
 
             const idOt =
@@ -214,16 +211,26 @@ const ProgramarOT = () => {
             navigate('/planner/ordenes');
 
         } catch (error) {
-            console.error(
-                'Error al crear Orden de Trabajo:',
-                error
-            );
-
-            setError(
+            const mensajeError =
                 error.response?.data?.message ||
                 error.message ||
-                'No se pudo crear la Orden de Trabajo'
-            );
+                'No se pudo crear la Orden de Trabajo';
+
+            console.error('Error al crear Orden de Trabajo:', {
+                status: error.response?.status,
+                data: error.response?.data,
+                message: error.message
+            });
+
+            setError(mensajeError);
+
+            await Swal.fire({
+                icon: 'error',
+                title: 'No se pudo crear la OT',
+                text: mensajeError,
+                confirmButtonText: 'Aceptar',
+                confirmButtonColor: '#dc2626'
+            });
         } finally {
             setGuardando(false);
         }

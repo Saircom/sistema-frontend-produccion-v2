@@ -53,6 +53,7 @@ import ViaticosAdmin from './viaticos/ViaticosAdmin.jsx';
 import InformeTecnicoList from './informe-tecnico/InformeTecnicoList.jsx';
 
 import Cotizacion from './cotizacion/CotizacionList';
+import CotizacionFormPage from './cotizacion/CotizacionFormPage.jsx';
 
 
 //Movilidades
@@ -260,6 +261,8 @@ function MyApp() {
 
 
             <Route path={route.cotizacion} element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.postventa, UserRole.planner]}><Cotizacion /></ProtectedRoute>} />
+            <Route path="/postventa/cotizacion/nueva" element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.postventa, UserRole.planner]}><CotizacionFormPage /></ProtectedRoute>} />
+            <Route path="/postventa/cotizacion/:idCotizacion/editar" element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.postventa, UserRole.planner]}><CotizacionFormPage /></ProtectedRoute>} />
             <Route path={route.listmovilidades} element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.postventa, UserRole.planner]}><MovilidadList /></ProtectedRoute>} />
             <Route path={route.movilidaddetalle} element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.postventa, UserRole.planner]}><MovilidadDetalle /></ProtectedRoute>} />
             <Route path={route.historialinforme} element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.tecnico, UserRole.postventa, UserRole.planner]}><HistorialInformes /></ProtectedRoute>} />

@@ -1,9 +1,9 @@
-/* eslint-disable react/prop-types */
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import CotizacionService from '../../services/cotizaciones.service.js';
-import CotizacionForm from './CotizacionForm.jsx';
 import Modal from '../../components/ui/Modal.jsx';
 import { useAuth } from '../../context/authContext.jsx';
+import { isSuperAdmin } from '../../utils/permissions.js';
 
 // --- Helpers de presentación ---
 
@@ -147,7 +147,7 @@ const CotizacionDetalleModal = ({ isOpen, onClose, cotizacion, loading, canEdit,
                         )}
                     </div>
 
-                    {canEdit && cotizacion.estado === 'borrador' && (
+                    {canEdit && (
                         <div className="sticky bottom-0 flex justify-end border-t border-gray-200 bg-white pt-4">
                             <button type="button" onClick={onEdit} className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">Editar cotización</button>
                         </div>
@@ -162,21 +162,25 @@ const CotizacionDetalleModal = ({ isOpen, onClose, cotizacion, loading, canEdit,
 
 const CotizacionList = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
+    const location = useLocation();
     const [cotizaciones, setCotizaciones] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [isDetalleOpen, setIsDetalleOpen] = useState(false);
-    const [isEditOpen, setIsEditOpen] = useState(false);
     const [detalleCotizacion, setDetalleCotizacion] = useState(null);
     const [detalleLoading, setDetalleLoading] = useState(false);
     const [actualizandoId, setActualizandoId] = useState(null);
     const [error, setError] = useState('');
-    const [mensaje, setMensaje] = useState('');
+    const [mensaje, setMensaje] = useState(location.state?.mensaje || '');
 
     const puedeActualizarEstado = ['POSTVENTA', 'ADMINISTRADOR', 'SUPERADMINISTRADOR'].includes(
         String(user?.rol ?? '').trim().toUpperCase()
     );
+    const puedeEditarCotizacion = cotizacion => {
+        const estado = String(cotizacion?.estado ?? 'borrador').trim().toLowerCase();
+        return estado === 'borrador' || (estado === 'aprobada' && isSuperAdmin(user));
+    };
 
     const load = async () => {
         setLoading(true);
@@ -188,11 +192,6 @@ const CotizacionList = () => {
     useEffect(() => {
         load();
     }, []);
-
-    const handleSaveSuccess = () => {
-        setIsModalOpen(false);
-        load();
-    };
 
     const handleRowClick = async (cotizacionResumen) => {
         setIsDetalleOpen(true);
@@ -268,47 +267,24 @@ const CotizacionList = () => {
                     <p className="text-sm text-gray-400">{cotizaciones.length} registro(s)</p>
                 </div>
                 <button
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={() => navigate('/postventa/cotizacion/nueva')}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm text-sm"
                 >
                     + Nueva Cotización
                 </button>
             </div>
 
-            <Modal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                title="Nueva Cotización"
-            >
-                <CotizacionForm onSaveSuccess={handleSaveSuccess} />
-            </Modal>
-
             <CotizacionDetalleModal
                 isOpen={isDetalleOpen}
                 onClose={() => setIsDetalleOpen(false)}
                 cotizacion={detalleCotizacion}
                 loading={detalleLoading}
-                canEdit={puedeActualizarEstado}
+                canEdit={puedeEditarCotizacion(detalleCotizacion)}
                 onEdit={() => {
                     setIsDetalleOpen(false);
-                    setIsEditOpen(true);
+                    navigate(`/postventa/cotizacion/${detalleCotizacion.id_cotizacion}/editar`);
                 }}
             />
-
-            <Modal
-                isOpen={isEditOpen}
-                onClose={() => setIsEditOpen(false)}
-                title={`Editar cotización N.° ${detalleCotizacion?.numero_cotizacion || ''}`}
-            >
-                <CotizacionForm
-                    initialData={detalleCotizacion}
-                    onSaveSuccess={() => {
-                        setIsEditOpen(false);
-                        setMensaje('Cotización actualizada correctamente.');
-                        load();
-                    }}
-                />
-            </Modal>
 
             {mensaje && (
                 <div role="status" className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
