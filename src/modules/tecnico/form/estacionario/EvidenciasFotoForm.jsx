@@ -16,7 +16,7 @@ const TIPOS_PERMITIDOS = [
 ];
 
 const MAX_ARCHIVO = 10 * 1024 * 1024;
-const MAX_IMAGENES = 20;
+const MAX_IMAGENES = 50;
 
 const generarIdTemporal = () =>
     `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;

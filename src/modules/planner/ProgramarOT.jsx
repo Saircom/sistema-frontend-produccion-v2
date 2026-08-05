@@ -164,12 +164,11 @@ const ProgramarOT = () => {
 
         if (
             !form.idTecnicoResponsable ||
-            !form.idMovilidad ||
             !form.fechaProgramada ||
             !form.fechaFinProgramada
         ) {
             setError(
-                'Seleccione técnico, movilidad y fecha programada'
+                'Seleccione el técnico y las fechas programadas'
             );
             return;
         }
@@ -184,7 +183,7 @@ const ProgramarOT = () => {
                     form.idTecnicoResponsable
                 ),
                 idsTecnicosApoyo: form.idsTecnicosApoyo.map(Number),
-                idMovilidad: Number(form.idMovilidad),
+                idMovilidad: form.idMovilidad ? Number(form.idMovilidad) : null,
                 fechaProgramada: form.fechaProgramada,
                 fechaFinProgramada: form.fechaFinProgramada
             });
@@ -496,10 +495,9 @@ const ProgramarOT = () => {
                                 value={form.idMovilidad}
                                 onChange={handleChange}
                                 className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                                required
                             >
                                 <option value="">
-                                    Seleccione una movilidad
+                                    Sin movilidad
                                 </option>
 
                                 {movilidades.map((movilidad) => (
@@ -517,11 +515,9 @@ const ProgramarOT = () => {
                                 ))}
                             </select>
 
-                            {movilidades.length === 0 && (
-                                <p className="mt-1 text-xs text-red-600">
-                                    No existen movilidades disponibles.
-                                </p>
-                            )}
+                            <p className="mt-1 text-xs text-slate-500">
+                                Seleccione “Sin movilidad” cuando el servicio no requiera un vehículo.
+                            </p>
                         </label>
 
                         <label className="block">

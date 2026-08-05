@@ -15,6 +15,14 @@ const detalleInicial = {
 };
 
 const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
+    const selectPortalProps = {
+        menuPortalTarget: typeof document !== 'undefined' ? document.body : null,
+        menuPosition: 'fixed',
+        styles: {
+            menuPortal: base => ({ ...base, zIndex: 9999 }),
+            menu: base => ({ ...base, zIndex: 9999 })
+        }
+    };
     const [clientes, setClientes] = useState([]);
     const [equipos, setEquipos] = useState([]);
     const [tiposBase, setTiposBase] = useState([]);
@@ -25,6 +33,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
         idCliente: null,
         tipoPago: null,
         centroCosto: null,
+        movilidad: '',
         nota: '',
         estado: 'borrador'
     });
@@ -79,6 +88,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                 idCliente: { value: initialData.id_cliente, label: initialData.nombre_cliente || 'Cliente' },
                 tipoPago: opcionesTipoPago.find(opcion => opcion.value === initialData.tipo_pago) || null,
                 centroCosto: opcionesCentroCosto.find(opcion => opcion.value === initialData.centro_costo) || null,
+                movilidad: initialData.movilidad ?? '',
                 nota: initialData.nota || '',
                 estado: initialData.estado || 'borrador'
             });
@@ -103,7 +113,11 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                                 label: [equipo.marca, equipo.modelo, equipo.serie ? `Serie: ${equipo.serie}` : null].filter(Boolean).join(' - ')
                             } : null,
                             idTipoServicio: { value: idTipo, label: servicios[0]?.nombre_tipo_servicio || 'Servicio' },
-                            idServicios: servicios.map(servicio => ({ value: servicio.id_subtipo_servicio, label: servicio.nombre_subtipo })),
+                            idServicios: servicios.map(servicio => ({
+                                value: servicio.id_subtipo_servicio,
+                                label: servicio.nombre_subtipo,
+                                precio: servicio.precio ?? ''
+                            })),
                             subtiposDisponibles: subtipos.map(subtipo => ({
                                 value: subtipo.id_subtipo_servicio,
                                 label: subtipo.nombre_subtipo || subtipo.nombre || 'Sin nombre'
@@ -226,6 +240,33 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
         ]);
     };
 
+    const actualizarSubtiposSeleccionados = (index, seleccionados) => {
+        setDetalles(actuales => actuales.map((detalle, posicion) => {
+            if (posicion !== index) return detalle;
+            const preciosActuales = new Map(
+                detalle.idServicios.map(servicio => [String(servicio.value), servicio.precio ?? ''])
+            );
+            return {
+                ...detalle,
+                idServicios: (seleccionados || []).map(servicio => ({
+                    ...servicio,
+                    precio: preciosActuales.get(String(servicio.value)) ?? ''
+                }))
+            };
+        }));
+    };
+
+    const actualizarPrecioServicio = (indexDetalle, idServicio, precio) => {
+        setDetalles(actuales => actuales.map((detalle, posicion) => posicion === indexDetalle
+            ? {
+                ...detalle,
+                idServicios: detalle.idServicios.map(servicio => String(servicio.value) === String(idServicio)
+                    ? { ...servicio, precio }
+                    : servicio)
+            }
+            : detalle));
+    };
+
     const duplicarDetalle = (index) => {
         setDetalles((detallesActuales) => {
             const origen = detallesActuales[index];
@@ -278,6 +319,17 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
             ) {
                 return `Debe seleccionar al menos un subtipo en la fila ${index + 1}`;
             }
+
+            if (detalle.idServicios.some(servicio => (
+                servicio.precio === '' || servicio.precio === null
+                || !Number.isFinite(Number(servicio.precio)) || Number(servicio.precio) < 0
+            ))) {
+                return `Ingrese un precio válido para cada subtipo en la fila ${index + 1}`;
+            }
+        }
+
+        if (header.movilidad !== '' && (!Number.isFinite(Number(header.movilidad)) || Number(header.movilidad) < 0)) {
+            return 'El costo adicional debe ser un monto válido';
         }
 
         return null;
@@ -299,14 +351,16 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
             idCliente: header.idCliente.value,
             tipoPago: header.tipoPago.value,
             centroCosto: header.centroCosto.value,
+            movilidad: header.movilidad === '' ? null : Number(header.movilidad),
             nota: header.nota.trim(),
             estado: header.estado,
             detalles: detalles.map((detalle) => ({
                 idEquipo: detalle.idEquipo?.value || null,
                 idTipoServicio: detalle.idTipoServicio.value,
-                idServicios: detalle.idServicios.map(
-                    (subtipo) => subtipo.value
-                )
+                idServicios: detalle.idServicios.map(subtipo => ({
+                    idSubtipoServicio: subtipo.value,
+                    precio: Number(subtipo.precio)
+                }))
             }))
         };
 
@@ -327,6 +381,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                 idCliente: null,
                 tipoPago: null,
                 centroCosto: null,
+                movilidad: '',
                 nota: '',
                 estado: 'borrador'
             });
@@ -360,6 +415,10 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
     const serviciosCompletos = detalles.every(
         detalle => detalle.idTipoServicio?.value && detalle.idServicios.length > 0
     );
+    const subtotalServicios = detalles.reduce((total, detalle) => total + detalle.idServicios.reduce(
+        (subtotal, servicio) => subtotal + (Number(servicio.precio) || 0), 0
+    ), 0);
+    const costoAdicional = Number(header.movilidad) || 0;
 
     return (
         <form
@@ -404,6 +463,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                 </div>
 
                 <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Cliente</span><Select
+                    {...selectPortalProps}
                     placeholder="Buscar cliente..."
                     options={clientes.map((cliente) => ({
                         value: cliente.id_cliente,
@@ -421,6 +481,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                 /></label>
 
                 <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Tipo de pago</span><Select
+                    {...selectPortalProps}
                     placeholder="Tipo de pago"
                     options={opcionesTipoPago}
                     value={header.tipoPago}
@@ -434,6 +495,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                 /></label>
 
                 <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Centro de costo</span><Select
+                    {...selectPortalProps}
                     placeholder="Centro de costo"
                     options={opcionesCentroCosto}
                     value={header.centroCosto}
@@ -445,6 +507,14 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                     }
                     isClearable
                 /></label>
+
+                <label className="block">
+                    <span className="mb-1.5 block text-sm font-semibold text-slate-700">Costo Movilidad <span className="font-normal text-slate-400">(opcional)</span></span>
+                    <div className="flex rounded-lg border border-slate-300 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                        <span className="border-r border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-500">USD $</span>
+                        <input type="number" min="0" step="0.01" value={header.movilidad} onChange={event => setHeader(actual => ({ ...actual, movilidad: event.target.value }))} placeholder="0.00" className="min-w-0 flex-1 rounded-r-lg px-3 py-2.5 outline-none" />
+                    </div>
+                </label>
             </div>
 
             <label className="block">
@@ -492,6 +562,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                         <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Equipo <span className="font-normal text-slate-400">(opcional)</span></span>
                         <Select
+                            {...selectPortalProps}
                             placeholder="Equipo (opcional)"
                             options={equipos.map((equipo) => ({
                                 value: equipo.id_equipo,
@@ -524,6 +595,7 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                         </label>
                         <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Tipo de servicio</span>
                         <Select
+                            {...selectPortalProps}
                             placeholder="Tipo de servicio"
                             options={tiposBase.map((tipo) => ({
                                 value: tipo.id_tipo_servicio,
@@ -541,18 +613,13 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                         </label>
                         <label className="block"><span className="mb-1.5 block text-sm font-semibold text-slate-700">Subservicios</span>
                         <Select
+                            {...selectPortalProps}
                             isMulti
                             placeholder="Seleccionar subtipos..."
                             options={fila.subtiposDisponibles}
                             value={fila.idServicios}
                             isDisabled={!fila.idTipoServicio}
-                            onChange={(valor) =>
-                                actualizarDetalle(
-                                    index,
-                                    'idServicios',
-                                    valor || []
-                                )
-                            }
+                            onChange={(valor) => actualizarSubtiposSeleccionados(index, valor)}
                             closeMenuOnSelect={false}
                             noOptionsMessage={() =>
                                 'No hay subtipos disponibles'
@@ -560,6 +627,22 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                         />
                         </label>
                         </div>
+                        {fila.idServicios.length > 0 && (
+                            <div className="mt-4 rounded-xl border border-emerald-100 bg-white p-4">
+                                <p className="mb-3 text-sm font-bold text-slate-800">Precio independiente por subtipo</p>
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    {fila.idServicios.map(servicio => (
+                                        <label key={servicio.value} className="block text-sm text-slate-700">
+                                            <span className="mb-1 block font-medium">{servicio.label}</span>
+                                            <div className="flex rounded-lg border border-slate-300 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-100">
+                                                <span className="border-r border-slate-200 px-3 py-2 text-slate-500">USD $</span>
+                                                <input required type="number" min="0" step="0.01" value={servicio.precio ?? ''} onChange={event => actualizarPrecioServicio(index, servicio.value, event.target.value)} placeholder="0.00" className="min-w-0 flex-1 rounded-r-lg px-3 py-2 outline-none" />
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>
@@ -572,6 +655,12 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                 >
                     <Plus className="h-5 w-5" /> Agregar otro servicio
                 </button>
+
+                <div className="text-sm text-slate-600 sm:ml-auto sm:text-right">
+                    <p>Servicios: <strong>USD $ {subtotalServicios.toFixed(2)}</strong></p>
+                    <p>Adicional: <strong>USD $ {costoAdicional.toFixed(2)}</strong></p>
+                    <p className="text-base text-slate-900">Total: <strong>USD $ {(subtotalServicios + costoAdicional).toFixed(2)}</strong></p>
+                </div>
 
                 <button
                     type="submit"

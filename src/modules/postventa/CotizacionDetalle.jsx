@@ -15,6 +15,7 @@ import {
 import { otService } from '../../services/ot.service.js';
 import { cotizacionService } from '../../services/cotizacion.service.js';
 import { useAuth } from '../../context/authContext.jsx';
+import { isSuperAdmin } from '../../utils/permissions.js';
 
 const ESTADOS_COTIZACION = ['borrador', 'enviada', 'aprobada', 'rechazada'];
 const TRANSICIONES_COTIZACION = {
@@ -24,9 +25,9 @@ const TRANSICIONES_COTIZACION = {
     rechazada: []
 };
 
-const puedeTransicionar = (estadoActual, nuevoEstado) => {
+const puedeTransicionar = (estadoActual, nuevoEstado, accesoTotal = false) => {
     const actual = String(estadoActual || 'borrador').toLowerCase();
-    return nuevoEstado === actual
+    return accesoTotal || nuevoEstado === actual
         || (TRANSICIONES_COTIZACION[actual] ?? []).includes(nuevoEstado);
 };
 
@@ -280,7 +281,7 @@ export const CotizacionDetalle = () => {
                                     <option
                                         key={estado}
                                         value={estado}
-                                        disabled={!puedeTransicionar(cotizacion.estado, estado)}
+                                        disabled={!puedeTransicionar(cotizacion.estado, estado, isSuperAdmin(user))}
                                     >
                                         {estado}
                                     </option>

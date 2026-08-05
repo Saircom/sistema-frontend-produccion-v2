@@ -7,7 +7,9 @@ const VACIO = {
   tipo_equipo: '',
   id_marca: '',
   modelo: '',
+  unidadpn: '',
   serie: '',
+  unidadsn: '',
   encargado_equipo: '',
   sede: '',
   direccion: '',
@@ -33,7 +35,9 @@ const EquipoForm = ({ idCliente, marcas = [], onSuccess, equipoAEditar = null })
       tipo_equipo: normalizarTipoEquipo(equipoAEditar.tipo_equipo),
       id_marca: equipoAEditar.id_marca ? String(equipoAEditar.id_marca) : '',
       modelo: equipoAEditar.modelo || '',
+      unidadpn: equipoAEditar.unidadpn || '',
       serie: equipoAEditar.serie || '',
+      unidadsn: equipoAEditar.unidadsn || '',
       encargado_equipo: equipoAEditar.encargado_equipo || '',
       sede: equipoAEditar.sede || '',
       direccion: equipoAEditar.direccion || '',
@@ -108,6 +112,12 @@ const EquipoForm = ({ idCliente, marcas = [], onSuccess, equipoAEditar = null })
         </label>
         <label className="text-sm font-semibold text-slate-700">Serie <span className="text-red-600">*</span>
           <input name="serie" required maxLength={255} value={formData.serie} onChange={handleChange} className={`${inputClass} mt-1.5`} />
+        </label>
+        <label className="text-sm font-semibold text-slate-700">Unidad P/N
+          <input name="unidadpn" maxLength={100} value={formData.unidadpn} onChange={handleChange} placeholder="Opcional" className={`${inputClass} mt-1.5`} />
+        </label>
+        <label className="text-sm font-semibold text-slate-700">Unidad S/N
+          <input name="unidadsn" maxLength={100} value={formData.unidadsn} onChange={handleChange} placeholder="Opcional" className={`${inputClass} mt-1.5`} />
         </label>
         <label className="text-sm font-semibold text-slate-700">Encargado del equipo <span className="text-red-600">*</span>
           <input name="encargado_equipo" required maxLength={255} value={formData.encargado_equipo} onChange={handleChange} className={`${inputClass} mt-1.5`} />

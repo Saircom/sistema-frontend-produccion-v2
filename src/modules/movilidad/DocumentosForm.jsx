@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { movilidadService } from '../../services/movilidad.service';
 
-export const DocumentosForm = ({ movilidadId, onSuccess }) => {
+export const DocumentosForm = ({ movilidadId, documento, onSuccess }) => {
 
     const [formData, setFormData] = useState({
         tipo_documento: '',
@@ -11,6 +11,16 @@ export const DocumentosForm = ({ movilidadId, onSuccess }) => {
 
     const [archivo, setArchivo] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        const fecha = valor => valor ? String(valor).split('T')[0] : '';
+        setFormData({
+            tipo_documento: documento?.tipo_documento || '',
+            fecha_emision: fecha(documento?.fecha_emision),
+            fecha_vencimiento: fecha(documento?.fecha_vencimiento)
+        });
+        setArchivo(null);
+    }, [documento]);
 
     const handleChange = (e) => {
         setFormData(prev => ({
@@ -109,7 +119,8 @@ export const DocumentosForm = ({ movilidadId, onSuccess }) => {
                     name="tipo_documento"
                     value={formData.tipo_documento}
                     onChange={handleChange}
-                    className="w-full border rounded p-2"
+                    readOnly={Boolean(documento)}
+                    className={`w-full rounded border p-2 ${documento ? 'border-blue-200 bg-blue-50 font-semibold text-blue-800' : ''}`}
                     placeholder="SOAT, Revisión Técnica..."
                     required
                 />

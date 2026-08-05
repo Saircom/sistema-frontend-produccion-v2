@@ -96,6 +96,16 @@ export const EquipoLista = ({ equipos, onEliminar = () => { }, onEditar = () => 
                             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Serie</span>
                             <span className="text-sm font-mono text-gray-600 bg-gray-50 px-2 py-1 rounded inline-block">{equipo.serie}</span>
                         </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Unidad P/N</span>
+                                <span className="text-sm font-mono text-gray-600">{equipo.unidadpn || '—'}</span>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Unidad S/N</span>
+                                <span className="text-sm font-mono text-gray-600">{equipo.unidadsn || '—'}</span>
+                            </div>
+                        </div>
                         <div className="flex flex-col">
                             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Encargado</span>
                             <span className="text-sm font-mono text-gray-600 bg-gray-50 px-2 py-1 rounded inline-block">{equipo.encargado_equipo}</span>

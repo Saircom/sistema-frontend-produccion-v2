@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { movilidadService } from '../../services/movilidad.service';
 
+const fechaEnMeses = (meses) => {
+    const fecha = new Date();
+    fecha.setMonth(fecha.getMonth() + meses);
+    return fecha.toISOString().split('T')[0];
+};
+
 export const MantenimientoForm = ({ movilidad_id, kilometraje_actual, onSuccess }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -11,6 +17,10 @@ export const MantenimientoForm = ({ movilidad_id, kilometraje_actual, onSuccess 
         tipo: 'Preventivo',
         descripcion_trabajo: '',
         observaciones: '',
+        proxima_fecha_mantenimiento: fechaEnMeses(6),
+        proximo_kilometraje: Number(kilometraje_actual || 0) + 5000,
+        dias_alerta: 30,
+        kilometros_alerta: 500,
     });
 
     const handleChange = (e) => {
@@ -38,7 +48,10 @@ export const MantenimientoForm = ({ movilidad_id, kilometraje_actual, onSuccess 
             const dataToSubmit = {
                 ...formData,
                 movilidad_id: Number(movilidad_id),
-                kilometraje_al_momento: Number(formData.kilometraje_al_momento)
+                kilometraje_al_momento: Number(formData.kilometraje_al_momento),
+                proximo_kilometraje: formData.proximo_kilometraje === '' ? null : Number(formData.proximo_kilometraje),
+                dias_alerta: Number(formData.dias_alerta),
+                kilometros_alerta: Number(formData.kilometros_alerta)
             };
 
             await movilidadService.addMantenimiento(movilidad_id, dataToSubmit);
@@ -102,6 +115,29 @@ export const MantenimientoForm = ({ movilidad_id, kilometraje_actual, onSuccess 
                 placeholder="Observaciones"
                 className="w-full p-2 border rounded"
             />
+
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <h3 className="font-semibold text-amber-900">Programar el próximo mantenimiento</h3>
+                <p className="mb-3 text-xs text-amber-700">Se alertará cuando se alcance primero la fecha o el kilometraje.</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="text-sm font-medium text-gray-700">
+                        Próxima fecha
+                        <input type="date" name="proxima_fecha_mantenimiento" value={formData.proxima_fecha_mantenimiento} onChange={handleChange} className="mt-1 w-full rounded border bg-white p-2" />
+                    </label>
+                    <label className="text-sm font-medium text-gray-700">
+                        Próximo kilometraje
+                        <input type="number" min={Number(formData.kilometraje_al_momento) + 1} name="proximo_kilometraje" value={formData.proximo_kilometraje} onChange={handleChange} className="mt-1 w-full rounded border bg-white p-2" />
+                    </label>
+                    <label className="text-sm font-medium text-gray-700">
+                        Avisar con días de anticipación
+                        <input type="number" min="0" name="dias_alerta" value={formData.dias_alerta} onChange={handleChange} className="mt-1 w-full rounded border bg-white p-2" />
+                    </label>
+                    <label className="text-sm font-medium text-gray-700">
+                        Avisar con kilómetros de anticipación
+                        <input type="number" min="0" name="kilometros_alerta" value={formData.kilometros_alerta} onChange={handleChange} className="mt-1 w-full rounded border bg-white p-2" />
+                    </label>
+                </div>
+            </div>
 
             <button
                 type="submit"

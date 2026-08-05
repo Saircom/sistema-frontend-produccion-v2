@@ -107,7 +107,7 @@ export const DetalleOrdenTrabajo = () => {
             setProgramacion({
                 idTecnicoResponsable: String(orden.id_tecnico_responsable),
                 idsTecnicosApoyo: (orden.tecnicos_adicionales || []).map(item => Number(item.id_usuario)),
-                idMovilidad: String(orden.id_movilidad),
+                idMovilidad: orden.id_movilidad ? String(orden.id_movilidad) : '',
                 fechaProgramada: fechaParaInput(orden.fecha_programada),
                 fechaFinProgramada: fechaParaInput(orden.fecha_fin_programada)
             });
@@ -125,7 +125,7 @@ export const DetalleOrdenTrabajo = () => {
             const actualizada = await otService.actualizarProgramacion(orden.id_ot, {
                 idTecnicoResponsable: Number(programacion.idTecnicoResponsable),
                 idsTecnicosApoyo: programacion.idsTecnicosApoyo.map(Number),
-                idMovilidad: Number(programacion.idMovilidad),
+                idMovilidad: programacion.idMovilidad ? Number(programacion.idMovilidad) : null,
                 fechaProgramada: programacion.fechaProgramada,
                 fechaFinProgramada: programacion.fechaFinProgramada
             });
@@ -368,8 +368,8 @@ export const DetalleOrdenTrabajo = () => {
                             </select>
                         </label>
                         <label className="text-sm font-semibold text-slate-700">Movilidad
-                            <select required value={programacion.idMovilidad} onChange={e => setProgramacion(p => ({ ...p, idMovilidad: e.target.value }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2.5">
-                                <option value="">Seleccione</option>{movilidades.map(m => <option key={m.id_movilidad} value={m.id_movilidad}>{m.placa} - {m.marca} {m.modelo}</option>)}
+                            <select value={programacion.idMovilidad} onChange={e => setProgramacion(p => ({ ...p, idMovilidad: e.target.value }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2.5">
+                                <option value="">Sin movilidad</option>{movilidades.map(m => <option key={m.id_movilidad} value={m.id_movilidad}>{m.placa} - {m.marca} {m.modelo}</option>)}
                             </select>
                         </label>
                         <label className="text-sm font-semibold text-slate-700">Inicio programado<input required type="datetime-local" value={programacion.fechaProgramada} onChange={e => setProgramacion(p => ({ ...p, fechaProgramada: e.target.value }))} className="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2.5" /></label>

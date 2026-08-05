@@ -55,6 +55,11 @@ export class PdfBaseService {
         const modelo = `Modelo: ${servicio.modelo || "No especificado"}`;
         const serie = `Serie: ${servicio.serie || "No especificado"}`;
         const mantenimiento = servicio.tipoServicio || "Mantenimiento no especificado";
+        const mantenimientoLines = ajustarTexto(
+            mantenimiento,
+            18,
+            maxTextWidth
+        );
 
         // 1. Obtenemos el nombre completo del técnico principal
         const tecnicoPrincipal = `${servicio.tecnico || ""} ${servicio.tecnico_apellidos || ""}`.trim();
@@ -71,21 +76,14 @@ export class PdfBaseService {
                 .map(nombre => [nombre.toLocaleLowerCase('es'), nombre])
         ).values()];
 
-        // ===== FECHA CORREGIDA =====
+        // La fecha del informe corresponde a la programación original de la OT.
         let fechaFormateada = "No especificada";
+        const fechaProgramada = servicio.fecha_programada || servicio.orden?.fecha_programada;
 
-        if (servicio.fechainicio) {
-            const fechaString = servicio.fechainicio.split("T")[0];
-
-            const [anio, mes, dia] = fechaString.split("-");
-
-            const fechaDoc = new Date(
-                Number(anio),
-                Number(mes) - 1,
-                Number(dia)
-            );
-
-            fechaFormateada = fechaDoc.toLocaleDateString("es-PE", {
+        if (fechaProgramada) {
+            const fechaDoc = new Date(fechaProgramada);
+            if (!Number.isNaN(fechaDoc.getTime())) fechaFormateada = fechaDoc.toLocaleDateString("es-PE", {
+                timeZone: "America/Lima",
                 day: "numeric",
                 month: "long",
                 year: "numeric"
@@ -119,12 +117,12 @@ export class PdfBaseService {
                 extraSpace: 4,
                 color: SAIRCOM_AZUL
             },
-            {
-                text: mantenimiento,
+            ...mantenimientoLines.map((line, index) => ({
+                text: line,
                 fontSize: 18,
-                extraSpace: 0,
+                extraSpace: index === mantenimientoLines.length - 1 ? 0 : 2,
                 color: SAIRCOM_AZUL
-            }
+            }))
         ];
 
         const titleSpacing = 6;
@@ -184,7 +182,7 @@ export class PdfBaseService {
 
             currentY += 2; // Espacio adicional después de la lista
         }
-        doc.text(`FECHA   : ${fechaFormateada}`, 20, currentY + 12);
+        doc.text(`FECHA PROGRAMADA : ${fechaFormateada}`, 20, currentY + 12);
     }
 
     drawHeader() {

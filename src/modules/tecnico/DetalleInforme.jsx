@@ -722,6 +722,9 @@ export const DetalleInforme = () => {
     const equipo = detalle.equipo ?? {};
     const informe = detalle.informe ?? {};
     const informeFinalizado = Boolean(informe.fecha_finalizacion);
+    const informeRevisado = String(informe.estado_revision ?? '')
+        .trim()
+        .toLowerCase() === 'revisado';
     const tiempos = detalle.tiempos ?? {};
     const servicios = normalizarArreglo(detalle.servicios);
     const historial = normalizarArreglo(detalle.historial);
@@ -740,6 +743,7 @@ export const DetalleInforme = () => {
         ...detalle,
         id_servicio: informe.id_informe ?? detalle.id_servicio,
         id_ot: detalle.id_ot ?? orden.id_ot,
+        fecha_programada: orden.fecha_programada,
         fechainicio: tiempos.fecha_hora_inicio ?? orden.fecha_programada ?? informe.fecha_registro,
         razon_social: cliente.razon_social,
         ruc: cliente.ruc,
@@ -765,7 +769,7 @@ export const DetalleInforme = () => {
         servicio_responsable: normalizarArreglo(detalle.cierre_responsable ?? detalle.servicio_responsable)
     };
 
-    const hayEdicionActiva = Boolean(seccionEditando) || informeFinalizado;
+    const hayEdicionActiva = Boolean(seccionEditando) || (esTecnico && informeRevisado);
     const tipoEquipoNormalizado = String(equipo.tipo_equipo ?? '')
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
@@ -822,8 +826,8 @@ export const DetalleInforme = () => {
                     )}
 
                     {informeFinalizado && (
-                        <span className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700">
-                            Finalizado: {formatearFecha(informe.fecha_finalizacion)}
+                        <span className={`rounded-lg border px-4 py-2 text-sm font-semibold ${informeRevisado ? 'border-green-200 bg-green-50 text-green-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
+                            {informeRevisado ? 'Revisado y bloqueado' : 'Pendiente de revisión · aún editable'}: {formatearFecha(informe.fecha_finalizacion)}
                         </span>
                     )}
 

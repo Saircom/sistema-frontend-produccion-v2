@@ -213,7 +213,7 @@ const OrdenesTrabajo = () => {
                                     </p>
 
                                     <p className="font-medium">
-                                        {orden.placa_movilidad}
+                                        {orden.placa_movilidad || orden.movilidad || 'Sin movilidad'}
                                     </p>
 
                                 </div>

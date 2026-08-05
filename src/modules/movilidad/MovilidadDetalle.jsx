@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { movilidadService } from '../../services/movilidad.service';
-import { ArrowLeft, Wrench, FileText } from 'lucide-react';
+import { ArrowLeft, Wrench, FileText, AlertTriangle, CalendarClock, CheckCircle2 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import MantenimientoForm from './MantenimientoForm';
 import DocumentosForm from './DocumentosForm';
@@ -85,6 +85,8 @@ export const MovilidadDetalle = () => {
                 </div>
             </div>
 
+            <AlertaMantenimiento movilidad={movilidad} />
+
             {/* DOCUMENTOS */}
             {/* DOCUMENTOS */}
             <div className="mb-6">
@@ -123,13 +125,13 @@ export const MovilidadDetalle = () => {
                                             {documento?.url_archivo ? (
                                                 <a
                                                     // Esto convierte la URL para forzar la descarga sin importar cómo se subió
-                                                    href={documento.url_archivo.replace('/image/upload/', '/image/upload/fl_attachment/')}
+                                                    href={documento.url_archivo}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1"
                                                 >
                                                     <FileText className="w-4 h-4" />
-                                                    Descargar Documento
+                                                    Ver / descargar documento
                                                 </a>
                                             ) : (
                                                 <span className="text-gray-400 text-xs italic">Sin archivo</span>
@@ -137,7 +139,10 @@ export const MovilidadDetalle = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right text-sm">
                                             <button
-                                                onClick={() => { setSelectedDoc(doc); setIsDocModalOpen(true); }}
+                                                onClick={() => {
+                                                    setSelectedDoc(documento || { tipo_documento: doc });
+                                                    setIsDocModalOpen(true);
+                                                }}
                                                 className="text-blue-600 hover:text-blue-800 font-medium"
                                             >
                                                 Actualizar
@@ -189,8 +194,8 @@ export const MovilidadDetalle = () => {
                 <MantenimientoForm movilidad_id={id} kilometraje_actual={movilidad?.kilometraje_actual} onSuccess={() => { setIsMaintModalOpen(false); cargarMovilidad(); }} />
             </Modal>
 
-            <Modal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} title={selectedDoc ? `Actualizar ${selectedDoc}` : "Nuevo Documento"}>
-                <DocumentosForm movilidadId={id} onSuccess={() => { setIsDocModalOpen(false); cargarMovilidad(); }} />
+            <Modal isOpen={isDocModalOpen} onClose={() => setIsDocModalOpen(false)} title={selectedDoc ? `Actualizar ${selectedDoc.tipo_documento}` : "Nuevo Documento"}>
+                <DocumentosForm movilidadId={id} documento={selectedDoc} onSuccess={() => { setIsDocModalOpen(false); cargarMovilidad(); }} />
             </Modal>
         </div>
     );
@@ -202,6 +207,31 @@ const InfoItem = ({ label, value }) => (
         <p className="font-semibold">{value || "N/A"}</p>
     </div>
 );
+
+const AlertaMantenimiento = ({ movilidad }) => {
+    const estado = movilidad.alerta_mantenimiento?.estado || 'Sin programar';
+    const configuracion = estado === 'Vencido'
+        ? { icono: AlertTriangle, clase: 'border-red-300 bg-red-50 text-red-900', titulo: 'Mantenimiento vencido' }
+        : estado === 'Proximo'
+            ? { icono: CalendarClock, clase: 'border-amber-300 bg-amber-50 text-amber-900', titulo: 'Mantenimiento próximo' }
+            : estado === 'Al dia'
+                ? { icono: CheckCircle2, clase: 'border-emerald-300 bg-emerald-50 text-emerald-900', titulo: 'Mantenimiento al día' }
+                : { icono: CalendarClock, clase: 'border-gray-300 bg-gray-50 text-gray-700', titulo: 'Próximo mantenimiento sin programar' };
+    const Icono = configuracion.icono;
+    const fecha = movilidad.proxima_fecha_mantenimiento
+        ? new Date(`${String(movilidad.proxima_fecha_mantenimiento).slice(0, 10)}T00:00:00`).toLocaleDateString()
+        : 'Sin fecha';
+    return (
+        <div className={`mb-6 flex flex-col gap-3 rounded-xl border p-5 sm:flex-row sm:items-center ${configuracion.clase}`}>
+            <Icono className="h-8 w-8 shrink-0" />
+            <div className="flex-1">
+                <h3 className="font-bold">{configuracion.titulo}</h3>
+                <p className="text-sm">Fecha: {fecha} · Meta: {movilidad.proximo_kilometraje ? `${Number(movilidad.proximo_kilometraje).toLocaleString()} km` : 'sin kilometraje'}</p>
+                {movilidad.alerta_mantenimiento?.dias_restantes != null && <p className="text-xs">{movilidad.alerta_mantenimiento.dias_restantes >= 0 ? `Faltan ${movilidad.alerta_mantenimiento.dias_restantes} días` : `Venció hace ${Math.abs(movilidad.alerta_mantenimiento.dias_restantes)} días`}</p>}
+            </div>
+        </div>
+    );
+};
 
 const getEstadoDocumento = (fecha) => {
     if (!fecha) return { texto: "No definido", color: "bg-gray-100 text-gray-600" };

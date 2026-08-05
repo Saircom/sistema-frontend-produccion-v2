@@ -4,6 +4,7 @@ import CotizacionService from '../../services/cotizaciones.service.js';
 import Modal from '../../components/ui/Modal.jsx';
 import { useAuth } from '../../context/authContext.jsx';
 import { isSuperAdmin } from '../../utils/permissions.js';
+import CotizacionPDF from './CotizacionPDF.jsx';
 
 // --- Helpers de presentación ---
 
@@ -23,9 +24,9 @@ const TRANSICIONES_COTIZACION = {
     rechazada: []
 };
 
-const puedeTransicionar = (estadoActual, nuevoEstado) => {
+const puedeTransicionar = (estadoActual, nuevoEstado, accesoTotal = false) => {
     const actual = String(estadoActual || 'borrador').toLowerCase();
-    return nuevoEstado === actual
+    return accesoTotal || nuevoEstado === actual
         || (TRANSICIONES_COTIZACION[actual] ?? []).includes(nuevoEstado);
 };
 
@@ -45,6 +46,13 @@ const formatFecha = (isoString) => {
     if (isNaN(d.getTime())) return '—';
     return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
 };
+
+const formatMoneda = valor => `USD $ ${(Number(valor) || 0).toFixed(2)}`;
+const subtotalCotizacion = cotizacion => (cotizacion?.equipos || []).reduce(
+    (total, equipo) => total + (equipo.servicios || []).reduce(
+        (subtotal, servicio) => subtotal + (Number(servicio.precio) || 0), 0
+    ), 0
+);
 
 // --- Modal de detalle de cotización ---
 
@@ -90,6 +98,7 @@ const CotizacionDetalleModal = ({ isOpen, onClose, cotizacion, loading, canEdit,
                         <div><p className="text-[11px] uppercase tracking-wide text-gray-400 font-medium">Correo</p><p className="break-all text-sm font-semibold text-gray-800">{cotizacion.correo || '—'}</p></div>
                         <div className="col-span-2"><p className="text-[11px] uppercase tracking-wide text-gray-400 font-medium">Dirección</p><p className="text-sm font-semibold text-gray-800">{cotizacion.direccion || '—'}</p></div>
                         <div><p className="text-[11px] uppercase tracking-wide text-gray-400 font-medium">Ubicación</p><p className="text-sm font-semibold text-gray-800">{[cotizacion.distrito, cotizacion.provincia, cotizacion.departamento].filter(Boolean).join(', ') || '—'}</p></div>
+                        <div><p className="text-[11px] uppercase tracking-wide text-gray-400 font-medium">Costo Movilidad</p><p className="text-sm font-semibold text-emerald-700">{cotizacion.movilidad == null ? '—' : formatMoneda(cotizacion.movilidad)}</p></div>
                         {cotizacion.nota && (
                             <div className="col-span-2 sm:col-span-3">
                                 <p className="text-[11px] uppercase tracking-wide text-gray-400 font-medium">Nota</p>
@@ -129,15 +138,15 @@ const CotizacionDetalleModal = ({ isOpen, onClose, cotizacion, loading, canEdit,
                                          </div>}
 
                                         {eq.servicios?.length > 0 && (
-                                            <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-100">
+                                            <div className="space-y-1.5 pt-2 border-t border-gray-100">
                                                 {eq.servicios.map((s) => (
-                                                    <span
+                                                    <div
                                                         key={s.id_detalle}
                                                         title={s.nombre_tipo_servicio}
-                                                        className="text-[11px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md font-medium"
+                                                        className="flex items-center justify-between gap-3 rounded-md bg-indigo-50 px-2 py-1 text-[11px] font-medium text-indigo-700"
                                                     >
-                                                        {s.nombre_subtipo}
-                                                    </span>
+                                                        <span>{s.nombre_subtipo}</span><strong>{s.precio == null ? 'Sin precio' : formatMoneda(s.precio)}</strong>
+                                                    </div>
                                                 ))}
                                             </div>
                                         )}
@@ -147,11 +156,18 @@ const CotizacionDetalleModal = ({ isOpen, onClose, cotizacion, loading, canEdit,
                         )}
                     </div>
 
-                    {canEdit && (
-                        <div className="sticky bottom-0 flex justify-end border-t border-gray-200 bg-white pt-4">
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm">
+                        <div className="flex justify-between text-emerald-800"><span>Subtotal de servicios</span><strong>{formatMoneda(subtotalCotizacion(cotizacion))}</strong></div>
+                        <div className="mt-1 flex justify-between text-emerald-800"><span>Costo adicional</span><strong>{formatMoneda(cotizacion.movilidad)}</strong></div>
+                        <div className="mt-2 flex justify-between border-t border-emerald-200 pt-2 text-base text-emerald-950"><span>Total cotizado</span><strong>{formatMoneda(subtotalCotizacion(cotizacion) + (Number(cotizacion.movilidad) || 0))}</strong></div>
+                    </div>
+
+                    <div className="sticky bottom-0 flex flex-wrap justify-end gap-3 border-t border-gray-200 bg-white pt-4">
+                        <CotizacionPDF cotizacion={cotizacion} />
+                        {canEdit && (
                             <button type="button" onClick={onEdit} className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">Editar cotización</button>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             )}
         </Modal>
@@ -179,7 +195,7 @@ const CotizacionList = () => {
     );
     const puedeEditarCotizacion = cotizacion => {
         const estado = String(cotizacion?.estado ?? 'borrador').trim().toLowerCase();
-        return estado === 'borrador' || (estado === 'aprobada' && isSuperAdmin(user));
+        return isSuperAdmin(user) || estado === 'borrador';
     };
 
     const load = async () => {
@@ -344,7 +360,7 @@ const CotizacionList = () => {
                                                     <option
                                                         key={estado}
                                                         value={estado}
-                                                        disabled={!puedeTransicionar(c.estado, estado)}
+                                                        disabled={!puedeTransicionar(c.estado, estado, isSuperAdmin(user))}
                                                     >
                                                         {estado}
                                                     </option>

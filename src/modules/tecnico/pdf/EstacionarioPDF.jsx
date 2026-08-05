@@ -77,9 +77,13 @@ function EstacionarioPDF({ servicio }) {
             pdf.y = 35;
 
             // FECHA Y DATOS CLIENTE
-            const fechaBackend = servicio.fechainicio ? new Date(servicio.fechainicio) : new Date();
+            const fechaOt = servicio.fecha_programada || servicio.orden?.fecha_programada;
+            const fechaBackend = fechaOt ? new Date(fechaOt) : new Date();
             const fechaValida = Number.isNaN(fechaBackend.getTime()) ? new Date() : fechaBackend;
-            const formattedDate = `Lima, ${fechaValida.getDate()} de ${fechaValida.toLocaleDateString('es-ES', { month: 'long' })} de ${fechaValida.getFullYear()}`;
+            const partesFecha = new Intl.DateTimeFormat('es-PE', {
+                timeZone: 'America/Lima', day: 'numeric', month: 'long', year: 'numeric'
+            }).format(fechaValida);
+            const formattedDate = `${partesFecha}`;
 
             doc.setFontSize(10).setFont("helvetica", "normal").setTextColor(0);
             doc.text(formattedDate, pageWidth - margin - 50, pdf.y);
