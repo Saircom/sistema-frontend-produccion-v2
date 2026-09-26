@@ -5,7 +5,7 @@ import { socket } from './socket.js';
 const api = axios.create({
     baseURL:
         import.meta.env.VITE_API_URL ||
-        'http://localhost:3000/api'
+        'https://sistema-backend-produccion-v2-production.up.railway.app/api'
 });
 
 api.interceptors.request.use(
