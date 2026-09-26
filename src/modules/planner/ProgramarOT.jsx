@@ -162,16 +162,59 @@ const ProgramarOT = () => {
     const handleSubmit = async (event) => {
         event.preventDefault();
 
-        if (
-            !form.idTecnicoResponsable ||
-            !form.fechaProgramada ||
-            !form.fechaFinProgramada
-        ) {
-            setError(
-                'Seleccione el técnico y las fechas programadas'
-            );
+        const errores = [];
+        if (!form.idTecnicoResponsable) {
+            errores.push('Debe seleccionar un Técnico responsable.');
+        }
+        if (!form.fechaProgramada) {
+            errores.push('Debe definir la Fecha y hora de inicio programada.');
+        }
+        if (!form.fechaFinProgramada) {
+            errores.push('Debe definir la Fecha y hora de fin programada.');
+        }
+        if (form.fechaProgramada && form.fechaFinProgramada) {
+            if (new Date(form.fechaFinProgramada) <= new Date(form.fechaProgramada)) {
+                errores.push('La fecha de fin programada debe ser posterior a la fecha de inicio.');
+            }
+        }
+
+        if (errores.length > 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Complete la programación de la OT',
+                html: `<p class="mb-2 text-sm text-gray-600">Por favor verifique los siguientes puntos:</p><ul style="text-align: left; margin-left: 20px; list-style-type: disc; font-size: 14px; color: #b91c1c;">${errores.map(e => `<li>${e}</li>`).join('')}</ul>`,
+                confirmButtonColor: '#2563eb',
+                confirmButtonText: 'Entendido'
+            });
+            setError(errores[0]);
             return;
         }
+
+        const tecnicoSeleccionado = tecnicos.find(t => String(t.id_usuario) === String(form.idTecnicoResponsable));
+        const nombreTecnico = tecnicoSeleccionado ? `${tecnicoSeleccionado.nombres} ${tecnicoSeleccionado.apellidos}` : 'Técnico seleccionado';
+        const movilidadSeleccionada = movilidades.find(m => String(m.id_movilidad) === String(form.idMovilidad));
+
+        const confirmacion = await Swal.fire({
+            title: '¿Generar Orden de Trabajo?',
+            html: `
+                <div style="text-align: left; font-size: 14px;">
+                    <p><strong>Cotización:</strong> ${cotizacion?.numero_cotizacion || ''}</p>
+                    <p><strong>Cliente:</strong> ${cotizacion?.razon_social || ''}</p>
+                    <p><strong>Técnico Responsable:</strong> ${nombreTecnico}</p>
+                    <p><strong>Movilidad:</strong> ${movilidadSeleccionada ? `${movilidadSeleccionada.placa} (${movilidadSeleccionada.marca || ''})` : 'Sin movilidad asignada'}</p>
+                    <p><strong>Inicio:</strong> ${new Date(form.fechaProgramada).toLocaleString('es-PE')}</p>
+                    <p><strong>Fin:</strong> ${new Date(form.fechaFinProgramada).toLocaleString('es-PE')}</p>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Sí, generar OT',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!confirmacion.isConfirmed) return;
 
         try {
             setGuardando(true);

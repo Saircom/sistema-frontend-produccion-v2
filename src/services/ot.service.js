@@ -61,5 +61,10 @@ export const otService = {
     async actualizarProgramacion(idOt, data) {
         const response = await api.put(`/ordentrabajo/${idOt}/programacion`, data);
         return response.data?.data ?? null;
+    },
+
+    async anularYReprogramar(idOt, data) {
+        const response = await api.post(`/ordentrabajo/${idOt}/anular-reprogramar`, data);
+        return response.data;
     }
 };

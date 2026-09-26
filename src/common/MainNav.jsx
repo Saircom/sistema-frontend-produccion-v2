@@ -110,10 +110,12 @@ const MainNav = ({ isOpen, sidebarRef, onNavigate }) => {
     },
     {
       title: "Postventa",
-      key: "postventa ",
+      key: "postventa",
       roles: ["ADMINISTRADOR", "POSTVENTA"],
       items: [
         { label: "Cotizacion", to: "/postventa/cotizacion", icon: UserCog, roles: ["ADMINISTRADOR", "POSTVENTA"] },
+        { label: "Órdenes de Trabajo", to: "/planner/ordenes", icon: ClipboardList, roles: ["ADMINISTRADOR", "POSTVENTA"] },
+        { label: "Lista de Informes", to: "/informe-tecnico", icon: ClipboardList, roles: ["ADMINISTRADOR", "POSTVENTA"], badge: puedeVerPlanner ? informesNoRevisados : 0 },
       ],
     },
     {
@@ -124,7 +126,7 @@ const MainNav = ({ isOpen, sidebarRef, onNavigate }) => {
         { label: "Calendario", to: "/servicio/calendario", icon: ClipboardList, roles: ["ADMINISTRADOR", "POSTVENTA", "PLANNER"] },
         { label: "Lista de Informes", to: "/informe-tecnico", icon: ClipboardList, roles: ["ADMINISTRADOR", "POSTVENTA", "PLANNER"], badge: puedeVerPlanner ? informesNoRevisados : 0 },
         { label: "Gastos", to: "/servicio/gastos", icon: Laptop, roles: ["ADMINISTRADOR", "TECNICO", "PLANNER"] },
-        { label: "Tiempos", to: "/servicio/tiempos", icon: Laptop, roles: ["ADMINISTRADOR", "PLANNER", "PLANNER"] }
+        { label: "Tiempos", to: "/servicio/tiempos", icon: Laptop, roles: ["ADMINISTRADOR", "PLANNER"] }
       ],
     },
     {

@@ -60,6 +60,90 @@ const DashboardAdministrador = () => {
         <section className="grid gap-4 lg:grid-cols-3"><article className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><Clock3 className="h-5 w-5 text-blue-600"/><h2 className="font-bold">Eficiencia de tiempos</h2></div><dl className="mt-5 space-y-4"><div className="flex justify-between"><dt className="text-sm text-slate-500">Integridad de registros</dt><dd className="font-black">{i.integridad_tiempos}%</dd></div><div className="flex justify-between"><dt className="text-sm text-slate-500">Ejecución promedio</dt><dd className="font-black">{numero(data.tiempos.promedio_ejecucion_min)} min</dd></div><div className="flex justify-between"><dt className="text-sm text-slate-500">Espera promedio</dt><dd className="font-black">{numero(data.tiempos.promedio_espera_min)} min</dd></div></dl></article><article className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><WalletCards className="h-5 w-5 text-cyan-600"/><h2 className="font-bold">Control de viáticos</h2></div><dl className="mt-5 space-y-4"><div className="flex justify-between"><dt className="text-sm text-slate-500">Costo promedio por OT</dt><dd className="font-black">{dinero(i.costo_promedio_ot)}</dd></div><div className="flex justify-between"><dt className="text-sm text-slate-500">Pagado</dt><dd className="font-black text-emerald-600">{dinero(data.viaticos.pagado)}</dd></div><div className="flex justify-between"><dt className="text-sm text-slate-500">Por validar</dt><dd className="font-black text-amber-600">{dinero(data.viaticos.por_validar)}</dd></div></dl></article><article className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex items-center gap-2"><CalendarRange className="h-5 w-5 text-violet-600"/><h2 className="font-bold">Calidad documental</h2></div><dl className="mt-5 space-y-4"><div className="flex justify-between"><dt className="text-sm text-slate-500">Informes generados</dt><dd className="font-black">{numero(data.informes.total)}</dd></div><div className="flex justify-between"><dt className="text-sm text-slate-500">No revisados</dt><dd className="font-black text-amber-600">{numero(data.informes.no_revisados)}</dd></div><div className="flex justify-between"><dt className="text-sm text-slate-500">Observados</dt><dd className="font-black text-red-600">{numero(data.informes.observados)}</dd></div></dl></article></section>
 
         <section className="grid gap-4 xl:grid-cols-2"><article className="overflow-hidden rounded-2xl border bg-white shadow-sm"><div className="border-b px-5 py-4"><h2 className="font-bold">Clientes con mayor actividad</h2><p className="text-xs text-slate-500">Ordenado por cantidad de OT del periodo</p></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-slate-50 text-left text-xs uppercase text-slate-500"><tr><th className="px-5 py-3">Cliente</th><th className="px-5 py-3 text-right">OT</th><th className="px-5 py-3 text-right">Viáticos</th></tr></thead><tbody>{data.clientes.map(x=><tr key={x.id_cliente} className="border-t"><td className="px-5 py-3 font-medium">{x.razon_social}</td><td className="px-5 py-3 text-right font-bold">{x.ordenes}</td><td className="px-5 py-3 text-right">{dinero(x.viaticos)}</td></tr>)}</tbody></table></div></article><article className="overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm"><div className="flex items-center gap-2 border-b border-red-100 bg-red-50 px-5 py-4"><AlertTriangle className="h-5 w-5 text-red-600"/><div><h2 className="font-bold text-red-900">OT que requieren atención</h2><p className="text-xs text-red-700">No finalizadas y con fecha fin programada vencida</p></div></div><div className="max-h-80 overflow-y-auto">{!data.alertas.length?<p className="p-8 text-center text-sm text-slate-500">No existen OT vencidas.</p>:data.alertas.map(x=><div key={x.id_ot} className="border-b p-4 last:border-0"><div className="flex justify-between gap-3"><p className="font-bold text-slate-900">OT-{x.id_ot} · {x.cliente}</p><span className="rounded-full bg-red-100 px-2 py-1 text-[10px] font-bold text-red-700">{x.estado}</span></div><p className="mt-1 text-xs text-slate-500">Técnico: {x.tecnico||'Sin asignar'} · Venció: {fecha(x.fecha_fin_programada)}</p></div>)}</div></article></section>
+
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b px-5 py-4 gap-2">
+                <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-amber-600" />
+                    <div>
+                        <h2 className="font-bold text-slate-900">Rendimiento bajo por máquinas</h2>
+                        <p className="text-xs text-slate-500">Equipos con criticidad operativa (fuera de servicio / en observación), alto tiempo de intervención o reportes con observaciones</p>
+                    </div>
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-200 self-start sm:self-auto">
+                    {data.maquinas_bajo_rendimiento?.length || 0} máquinas detectadas
+                </span>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 text-xs uppercase text-slate-500 border-b">
+                        <tr>
+                            <th className="px-5 py-3">Equipo / Modelo</th>
+                            <th className="px-5 py-3">Cliente</th>
+                            <th className="px-5 py-3 text-center">Estado Operativo</th>
+                            <th className="px-5 py-3 text-center">Intervenciones</th>
+                            <th className="px-5 py-3 text-right">Tiempo Total</th>
+                            <th className="px-5 py-3 text-right">Tiempo Promedio</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {(!data.maquinas_bajo_rendimiento || data.maquinas_bajo_rendimiento.length === 0) ? (
+                            <tr>
+                                <td colSpan={6} className="px-5 py-8 text-center text-slate-400 text-sm">
+                                    No se detectaron máquinas con bajo rendimiento en el periodo seleccionado.
+                                </td>
+                            </tr>
+                        ) : (
+                            data.maquinas_bajo_rendimiento.map((m) => {
+                                const esCritico = m.ultimo_estado_operacion === 'FUERA DE SERVICIO';
+                                const esObservacion = m.ultimo_estado_operacion === 'EN OBSERVACIÓN' || Number(m.informes_observados) > 0;
+                                return (
+                                    <tr key={m.id_equipo} className="hover:bg-slate-50/60 transition-colors">
+                                        <td className="px-5 py-3">
+                                            <div className="font-bold text-slate-900">{m.modelo || 'Sin modelo'}</div>
+                                            <div className="text-xs text-slate-400 font-mono">
+                                                {m.marca} · Serie: {m.serie || 'S/N'} {m.codigo_interno && m.codigo_interno !== 'NO APLICA' ? `· Cód: ${m.codigo_interno}` : ''}
+                                            </div>
+                                        </td>
+                                        <td className="px-5 py-3 text-slate-700 font-medium max-w-xs truncate" title={m.cliente}>
+                                            {m.cliente}
+                                        </td>
+                                        <td className="px-5 py-3 text-center">
+                                            {esCritico ? (
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700">
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse"></span>
+                                                    FUERA DE SERVICIO
+                                                </span>
+                                            ) : esObservacion ? (
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700">
+                                                    EN OBSERVACIÓN
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                                                    {m.ultimo_estado_operacion || 'OPERATIVO'}
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-5 py-3 text-center font-bold text-slate-800">
+                                            {m.total_intervenciones}
+                                        </td>
+                                        <td className="px-5 py-3 text-right font-black text-slate-900">
+                                            {numero(m.total_minutos)} min
+                                            <span className="block text-[10px] font-normal text-slate-400">
+                                                {(numero(m.total_minutos) / 60).toFixed(1)} h
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-3 text-right font-semibold text-slate-700">
+                                            {numero(m.promedio_minutos)} min
+                                        </td>
+                                    </tr>
+                                );
+                            })
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </section>
         <p className="text-right text-xs text-slate-400">Actualizado: {fecha(data.generado_en)}</p>
     </main>;
 };

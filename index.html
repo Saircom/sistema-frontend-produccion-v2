@@ -5,6 +5,43 @@
     <link rel="icon" type="image/png" href="/logov2.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SAIRCOM</title>
+    <script>
+      // Suprimir bug interno inyectado por Chrome DevTools (Live Metrics / Soft Navigations: reportAllChanges reading 'startTime')
+      (function () {
+        const isDevToolsSoftNavBug = (msg, stack) => {
+          const m = String(msg || '');
+          const s = String(stack || '');
+          return (
+            (m.includes("reading 'startTime'") && (s.includes('reportAllChanges') || s.includes('<anonymous>'))) ||
+            m.includes('reportAllChanges') ||
+            s.includes('devToolsReportSoftNavs')
+          );
+        };
+
+        window.addEventListener(
+          'error',
+          function (e) {
+            if (isDevToolsSoftNavBug(e.message, e.error?.stack)) {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              return true;
+            }
+          },
+          true
+        );
+
+        window.addEventListener(
+          'unhandledrejection',
+          function (e) {
+            if (isDevToolsSoftNavBug(e.reason?.message, e.reason?.stack)) {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+            }
+          },
+          true
+        );
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

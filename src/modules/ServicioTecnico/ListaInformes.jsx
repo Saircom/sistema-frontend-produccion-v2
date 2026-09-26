@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MoreVertical, Eye, Camera, CheckCircle, Clock, Trash2, UserCircle, Cpu, AlertCircle, Edit3, PenTool } from "lucide-react";
+import { Search, MoreVertical, Eye, Camera, CheckCircle, Clock, Trash2, UserCircle, Cpu, AlertCircle, Edit3, PenTool, Download } from "lucide-react";
 import Loading from "../../components/Loading";
 import Pagination from "../../components/Pagination";
 import { useAuth } from "../../context/authContext";
@@ -9,12 +9,14 @@ import usePersistedPage from "../../hooks/usePersistedPage";
 import Swal from "sweetalert2";
 import DetalleServicio from './DetalleServicio';
 import { serviciosService } from '../../services/service.service';
+import { descargarReporteServiciosCSV } from '../../services/reporteExport.service';
 
 function ListaReportes() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [listaReportes, setListaReportes] = useState([]);
     const [cargando, setCargando] = useState(false);
+    const [descargando, setDescargando] = useState(false);
     // ESTADOS DE FILTROS
     const [filtroRazon, setFiltroRazon] = useState("");
     const [filtroSerie, setFiltroSerie] = useState("");
@@ -27,17 +29,50 @@ function ListaReportes() {
     const [pagina, setPagina] = usePersistedPage("paginaReportes", 0);
     const [filasPagina, setFilasPagina] = useState(50);
 
+    const handleDescargarReporte = async () => {
+        setDescargando(true);
+        try {
+            await descargarReporteServiciosCSV();
+        } finally {
+            setDescargando(false);
+        }
+    };
+
     useEffect(() => {
         const leerServicio = async () => {
             setCargando(true);
             try {
                 const token = localStorage.getItem("token") || "";
-                const response = await fetch(`${ApiWebURL}/servicios`, {
+                let response = await fetch(`${ApiWebURL}/informe-tecnico/reporte-servicios-export`, {
                     method: "GET",
                     headers: { Authorization: `Bearer ${token}` },
                 });
+                if (!response.ok) {
+                    response = await fetch(`${ApiWebURL}/servicios`, {
+                        method: "GET",
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                }
                 const data = await response.json();
-                setListaReportes((data.data || []).sort((a, b) => b.id_servicio - a.id_servicio));
+                const rawList = data.data || [];
+                const adaptada = rawList.map((item, idx) => ({
+                    id_servicio: item.id_servicio || (item.ot ? Number(item.ot.replace(/\D/g, '')) : idx + 1),
+                    numero_orden: item.ot || item.numero_orden || `#${item.id_servicio || idx + 1}`,
+                    numero_cotizacion: item.centro_costo || item.numero_cotizacion || '—',
+                    cliente_razon_social: item.cliente || item.cliente_razon_social || '—',
+                    tipoServicio: item.tipo_de_servicio || item.tipoServicio || '—',
+                    servicio_nombre: item.servicio || '—',
+                    equipo: item.equipo || '—',
+                    equipo_marca: item.marca || item.equipo_marca || '—',
+                    equipo_modelo: item.modelo || item.equipo_modelo || '—',
+                    equipo_serie: item.potencia || item.equipo_serie || '—',
+                    tecnico_nombres: item.tecnico_asignado || item.tecnico_nombres || 'Sin asignar',
+                    fechainicio: item.fecha_programada || item.fechainicio || new Date().toISOString(),
+                    estado_actual: item.taller_campo || item.estado_actual || 'CAMPO',
+                    estado: item.hora_servicio_completado && item.hora_servicio_completado !== '—' ? 'Revisado' : (item.estado || 'No revisado'),
+                    item_raw: item
+                }));
+                setListaReportes(adaptada.sort((a, b) => b.id_servicio - a.id_servicio));
             } catch (error) {
                 console.error("Error al obtener reportes:", error.message);
             } finally {
@@ -170,10 +205,25 @@ function ListaReportes() {
 
                 <div className="p-2 border-b border-gray-100 bg-white">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
-                        <h3 className="text-2xl font-bold text-gray-800">Lista de Informes</h3>
-                        <span className="bg-indigo-50 text-indigo-700 px-4 py-1 rounded-full text-sm font-medium">
-                            {reportesFiltrados.length} Resultados
-                        </span>
+                        <div>
+                            <h3 className="text-2xl font-bold text-gray-800">Reporte de Servicios</h3>
+                            <p className="text-xs text-gray-500">Historial y seguimiento de servicios programados y ejecutados</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className="bg-indigo-50 text-indigo-700 px-4 py-1.5 rounded-full text-sm font-semibold">
+                                {reportesFiltrados.length} Resultados
+                            </span>
+                            <button
+                                type="button"
+                                onClick={handleDescargarReporte}
+                                disabled={descargando}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-lg text-sm font-bold shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+                                title="Descargar Reporte de Servicios con los 19 campos en formato Excel/CSV"
+                            >
+                                <Download size={18} />
+                                <span>{descargando ? "Descargando..." : "Descargar Reporte"}</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 items-stretch">

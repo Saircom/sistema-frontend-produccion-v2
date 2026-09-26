@@ -4,6 +4,7 @@ import Loading from "../../components/Loading.jsx";
 import { UsuarioService } from "../../services/user.service.js";
 import { RolService } from "../../services/role.service.js";
 import { notify } from "../../utils/notifications.jsx";
+import Swal from "sweetalert2";
 import Modal from "../../components/ui/Modal.jsx";
 import UsuarioForm from "../../components/forms/UsuarioForm.jsx";
 import Pagination from "../../components/Pagination.jsx";
@@ -63,15 +64,77 @@ function Usuarios() {
 
   const manejarSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
 
-    // Forzamos que las cadenas vayan en mayúsculas al backend (excepto password)
+    const errores = [];
+    const nombres = (usuarioForm.nombres || "").trim();
+    if (!nombres) errores.push("Los Nombres son obligatorios.");
+
+    const apellidos = (usuarioForm.apellidos || "").trim();
+    if (!apellidos) errores.push("Los Apellidos son obligatorios.");
+
+    const dni = (usuarioForm.dni || "").trim();
+    if (!/^\d{8}$/.test(dni)) {
+      errores.push("El DNI debe tener exactamente 8 dígitos numéricos.");
+    }
+
+    const correo = (usuarioForm.correo || "").trim();
+    if (!correo) {
+      errores.push("El Correo Electrónico es obligatorio.");
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+      errores.push("El formato del correo electrónico es inválido.");
+    }
+
+    if (!usuarioForm.id_rol || isNaN(parseInt(usuarioForm.id_rol))) {
+      errores.push("Debe seleccionar un Rol para el usuario.");
+    }
+
+    if (!modoEdicion) {
+      if (!usuarioForm.password || usuarioForm.password.length < 6) {
+        errores.push("La Contraseña es obligatoria y debe tener al menos 6 caracteres.");
+      }
+    } else if (usuarioForm.password && usuarioForm.password.length < 6) {
+      errores.push("Si desea cambiar la contraseña, debe tener al menos 6 caracteres.");
+    }
+
+    if (errores.length > 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Verifique los campos del formulario',
+        html: `<p class="mb-2 text-sm text-gray-600">Se detectaron los siguientes errores:</p><ul style="text-align: left; margin-left: 20px; list-style-type: disc; font-size: 14px; color: #b91c1c;">${errores.map(err => `<li>${err}</li>`).join('')}</ul>`,
+        confirmButtonColor: '#2563eb',
+        confirmButtonText: 'Entendido'
+      });
+      return;
+    }
+
+    const rolObj = roles.find(r => String(r.id_rol) === String(usuarioForm.id_rol));
+    const confirmacion = await Swal.fire({
+      title: modoEdicion ? '¿Actualizar usuario?' : '¿Registrar nuevo usuario?',
+      html: `
+        <div style="text-align: left; font-size: 14px;">
+          <p><strong>Usuario:</strong> ${nombres} ${apellidos}</p>
+          <p><strong>DNI:</strong> ${dni}</p>
+          <p><strong>Correo:</strong> ${correo}</p>
+          <p><strong>Rol:</strong> ${rolObj ? rolObj.nombre_rol : 'Asignado'}</p>
+        </div>
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#2563eb',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: modoEdicion ? 'Sí, actualizar' : 'Sí, registrar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
+    setSubmitting(true);
     let payload = {
-      nombres: (usuarioForm.nombres || "").trim().toUpperCase(),
-      apellidos: (usuarioForm.apellidos || "").trim().toUpperCase(),
-      dni: (usuarioForm.dni || "").trim(),
+      nombres: nombres.toUpperCase(),
+      apellidos: apellidos.toUpperCase(),
+      dni,
       celular: usuarioForm.celular ? usuarioForm.celular.trim().toUpperCase() : null,
-      correo: (usuarioForm.correo || "").trim().toUpperCase(),
+      correo: correo.toUpperCase(),
       password: usuarioForm.password,
       id_rol: parseInt(usuarioForm.id_rol)
     };
@@ -91,8 +154,13 @@ function Usuarios() {
       }
       setIsModalOpen(false);
       leerServicio();
-    } catch {
-      notify.error("Error", "No se pudo guardar el usuario");
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error al guardar usuario',
+        text: err?.response?.data?.message || err?.message || 'No se pudo guardar el usuario',
+        confirmButtonColor: '#2563eb'
+      });
     } finally {
       setSubmitting(false);
     }
@@ -136,7 +204,7 @@ function Usuarios() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-2">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-8xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-center mb-2 gap-2">
           <h1 className="text-xl font-bold text-slate-800">Panel de Usuarios</h1>
           <button

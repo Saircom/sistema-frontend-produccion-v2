@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { movilidadService } from '../../services/movilidad.service';
+import Swal from 'sweetalert2';
 
 export const MovilidadForm = ({ movilidadData, onSuccess }) => {
     const [formData, setFormData] = useState({
@@ -31,34 +32,80 @@ export const MovilidadForm = ({ movilidadData, onSuccess }) => {
         const { name, value, type } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: type === 'number' ? parseFloat(value) : value
+            [name]: type === 'number' ? parseFloat(value) : (name === 'placa' ? value.toUpperCase() : value)
         }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsSubmitting(true);
-        
-        // Log para ver qué datos se están enviando al servidor
-        console.log("Enviando formulario:", formData);
 
+        const errores = [];
+        const placa = String(formData.placa || '').trim().toUpperCase();
+        if (!placa) errores.push('La Placa es obligatoria.');
+        if (!String(formData.marca || '').trim()) errores.push('La Marca es obligatoria.');
+        if (!String(formData.modelo || '').trim()) errores.push('El Modelo es obligatorio.');
+        if (!String(formData.tipo_vehiculo || '').trim()) errores.push('El Tipo de Vehículo es obligatorio.');
+        if (formData.kilometraje_actual === '' || isNaN(Number(formData.kilometraje_actual)) || Number(formData.kilometraje_actual) < 0) {
+            errores.push('El Kilometraje actual debe ser un número mayor o igual a 0.');
+        }
+
+        if (errores.length > 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Campos requeridos pendientes',
+                html: `<p class="mb-2 text-sm text-gray-600">Por favor verifique los siguientes puntos:</p><ul style="text-align: left; margin-left: 20px; list-style-type: disc; font-size: 14px; color: #b91c1c;">${errores.map(err => `<li>${err}</li>`).join('')}</ul>`,
+                confirmButtonColor: '#2563eb',
+                confirmButtonText: 'Entendido'
+            });
+            return;
+        }
+
+        const isEditing = Boolean(formData.id_movilidad);
+        const confirmacion = await Swal.fire({
+            title: isEditing ? '¿Actualizar vehículo?' : '¿Registrar vehículo?',
+            html: `
+                <div style="text-align: left; font-size: 14px;">
+                    <p><strong>Placa:</strong> ${placa}</p>
+                    <p><strong>Marca:</strong> ${formData.marca}</p>
+                    <p><strong>Modelo:</strong> ${formData.modelo}</p>
+                    <p><strong>Tipo:</strong> ${formData.tipo_vehiculo}</p>
+                    <p><strong>Kilometraje:</strong> ${formData.kilometraje_actual} km</p>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: isEditing ? 'Sí, actualizar' : 'Sí, registrar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!confirmacion.isConfirmed) return;
+
+        setIsSubmitting(true);
         try {
-            if (formData.id_movilidad) {
-                await movilidadService.update(formData.id_movilidad, formData);
-                alert('Vehículo actualizado con éxito');
+            const payload = { ...formData, placa };
+            if (isEditing) {
+                await movilidadService.update(formData.id_movilidad, payload);
             } else {
-                await movilidadService.create(formData);
-                alert('Vehículo registrado con éxito');
+                await movilidadService.create(payload);
             }
+            await Swal.fire({
+                icon: 'success',
+                title: isEditing ? '¡Vehículo actualizado!' : '¡Vehículo registrado!',
+                text: isEditing ? 'Los cambios se guardaron con éxito.' : 'El vehículo fue registrado exitosamente.',
+                timer: 2000,
+                showConfirmButton: false
+            });
             if (onSuccess) onSuccess();
         } catch (error) {
-            // Log detallado del error para la consola
             console.error("Error en MovilidadForm:", error);
-            // Log adicional si el servidor responde con detalles específicos
-            if (error.response) {
-                console.error("Datos del error del servidor:", error.response.data);
-            }
-            alert(`Error: ${error.response?.data?.error || error.response?.data?.message || error.message || 'Ocurrió un error inesperado'}`);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al procesar el vehículo',
+                text: error.response?.data?.error || error.response?.data?.message || error.message || 'Ocurrió un error inesperado',
+                confirmButtonColor: '#2563eb'
+            });
         } finally {
             setIsSubmitting(false);
         }

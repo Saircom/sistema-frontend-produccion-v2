@@ -23,6 +23,13 @@ export const informetecnicoService = {
         return response.data;
     },
 
+    updateEstadoEnvio: async (idInforme, estadoEnvio) => {
+        const response = await api.patch(
+            `/informe-tecnico/${idInforme}/estado-envio`,
+            { estado_envio: estadoEnvio }
+        );
+        return response.data;
+    },
 };
 
 export default informetecnicoService;

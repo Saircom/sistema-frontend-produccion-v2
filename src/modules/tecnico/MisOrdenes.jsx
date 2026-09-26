@@ -26,6 +26,9 @@ const obtenerClaseEstado = (estado) => {
         case 'Finalizada':
             return 'bg-green-100 text-green-700';
 
+        case 'Cancelada':
+            return 'bg-rose-100 text-rose-700 border border-rose-200';
+
         default:
             return 'bg-slate-100 text-slate-700';
     }

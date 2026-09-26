@@ -90,10 +90,17 @@ export const DetalleOrdenTrabajo = () => {
         fechaProgramada: '', fechaFinProgramada: ''
     });
 
-    const puedeActualizarEstado = ['ADMINISTRADOR', 'PLANNER', 'SUPERADMINISTRADOR'].includes(
-        String(user?.rol ?? '').trim().toUpperCase()
+    const rolActual = String(user?.rol ?? '').trim().toUpperCase();
+    const esPostventa = rolActual === 'POSTVENTA';
+    const puedeVerGastos = !esPostventa && ['ADMINISTRADOR', 'PLANNER', 'TECNICO', 'SUPERADMINISTRADOR'].includes(rolActual);
+
+    const puedeActualizarEstado = !esPostventa && ['ADMINISTRADOR', 'PLANNER', 'SUPERADMINISTRADOR'].includes(
+        rolActual
     );
-    const puedeEditarProgramacion = isSuperAdmin(user) && orden?.estado === 'Programada';
+    const puedeEditarProgramacion = !esPostventa && (
+        isSuperAdmin(user) ||
+        ['ADMINISTRADOR', 'PLANNER'].includes(rolActual)
+    ) && orden?.estado === 'Programada';
 
     const abrirEdicionProgramacion = async () => {
         try {
@@ -272,14 +279,16 @@ export const DetalleOrdenTrabajo = () => {
                 Volver a órdenes
             </button>
 
-            <button
-                type="button"
-                onClick={() => navigate(`/ordenes/${orden.id_ot}/viaticos`)}
-                className="inline-flex w-fit items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-            >
-                <WalletCards className="h-4 w-4" />
-                Ver gastos de la OT
-            </button>
+            {puedeVerGastos && (
+                <button
+                    type="button"
+                    onClick={() => navigate(`/ordenes/${orden.id_ot}/viaticos`)}
+                    className="inline-flex w-fit items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                >
+                    <WalletCards className="h-4 w-4" />
+                    Ver gastos de la OT
+                </button>
+            )}
 
             <header className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-start md:justify-between">
                 <div>
@@ -297,13 +306,20 @@ export const DetalleOrdenTrabajo = () => {
                 </div>
 
                 <div className="flex flex-col items-end gap-3">
-                    <span
-                        className={`w-fit rounded-full px-4 py-2 text-sm font-semibold ${obtenerEstadoClase(
-                            orden.estado
-                        )}`}
-                    >
-                        {orden.estado}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span
+                            className={`w-fit rounded-full px-4 py-2 text-sm font-semibold ${obtenerEstadoClase(
+                                orden.estado
+                            )}`}
+                        >
+                            {orden.estado}
+                        </span>
+                        {esPostventa && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
+                                Modo consulta (Solo lectura)
+                            </span>
+                        )}
+                    </div>
 
                     {puedeActualizarEstado && (
                         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -358,7 +374,7 @@ export const DetalleOrdenTrabajo = () => {
             {editandoProgramacion && (
                 <form onSubmit={guardarProgramacion} className="rounded-xl border border-violet-200 bg-violet-50 p-5 shadow-sm">
                     <div className="mb-4 flex items-center justify-between">
-                        <div><h2 className="font-bold text-violet-950">Corregir OT programada</h2><p className="text-sm text-violet-700">Solo el Superadministrador puede cambiar responsables, movilidad y fechas.</p></div>
+                        <div><h2 className="font-bold text-violet-950">Corregir OT programada</h2><p className="text-sm text-violet-700">Permite corregir responsables, movilidad y fechas de la Orden de Trabajo.</p></div>
                         <button type="button" onClick={() => setEditandoProgramacion(false)} className="rounded-lg p-2 text-violet-700 hover:bg-violet-100"><X className="h-5 w-5" /></button>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
@@ -409,6 +425,16 @@ export const DetalleOrdenTrabajo = () => {
 
                             <p className="mt-1 font-semibold text-slate-900">
                                 {orden.ruc || 'No registrado'}
+                            </p>
+                        </div>
+
+                        <div>
+                            <p className="text-xs font-medium uppercase text-slate-500">
+                                Solicitado por
+                            </p>
+
+                            <p className="mt-1 font-semibold text-blue-600">
+                                {orden.quien_solicito || orden.usuario_creador || 'No registrado'}
                             </p>
                         </div>
 

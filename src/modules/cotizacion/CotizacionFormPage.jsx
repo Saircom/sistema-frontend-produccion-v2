@@ -3,12 +3,15 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import CotizacionService from '../../services/cotizaciones.service.js';
 import CotizacionForm from './CotizacionForm.jsx';
+import { useAuth } from '../../context/authContext.jsx';
+import { isSuperAdmin } from '../../utils/permissions.js';
 
 const obtenerCotizacion = respuesta => respuesta?.data?.data ?? respuesta?.data ?? respuesta ?? null;
 
 const CotizacionFormPage = () => {
     const { idCotizacion } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const esEdicion = Boolean(idCotizacion);
     const [cotizacion, setCotizacion] = useState(null);
     const [loading, setLoading] = useState(esEdicion);
@@ -23,6 +26,11 @@ const CotizacionFormPage = () => {
                 setError('');
                 const data = obtenerCotizacion(await CotizacionService.getById(idCotizacion));
                 if (!data?.id_cotizacion) throw new Error('La cotización solicitada no existe.');
+                const rolActual = String(user?.rol ?? '').trim().toUpperCase();
+                const esAdmin = isSuperAdmin(user) || rolActual === 'ADMINISTRADOR';
+                if (!esAdmin && rolActual === 'POSTVENTA' && Number(data.id_usuario_creador) !== Number(user?.id_usuario)) {
+                    throw new Error('Solo el usuario que creó esta cotización puede editarla.');
+                }
                 if (activo) setCotizacion(data);
             } catch (err) {
                 if (activo) setError(err?.response?.data?.message || err?.message || 'No se pudo cargar la cotización.');

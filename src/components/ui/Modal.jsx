@@ -16,13 +16,15 @@ const Modal = ({ isOpen, onClose, title, children, footer }) => {
       <div className="relative bg-white w-full max-w-full sm:max-w-lg md:max-w-2xl lg:max-w-4xl max-h-[90vh] flex flex-col rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
         
         {/* Cabecera (Fija) */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-600 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-blue-700 bg-blue-600 flex-shrink-0">
           <h3 className="text-xl font-bold text-white">{title}</h3>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1 text-red-100 hover:bg-red-700 rounded-full transition-colors"
+            className="p-1.5 text-blue-100 hover:text-white hover:bg-blue-700 rounded-full transition-colors"
+            aria-label="Cerrar modal"
           >
-            <X size={24} />
+            <X size={22} />
           </button>
         </div>
 

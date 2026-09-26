@@ -10,6 +10,12 @@ const routes = {
     dashboardtecnico: '/panel-tecnico',
     // Nueva ruta para detalle de equipos por cliente
     equiposCliente: '/equipos/cliente/:id',
+
+    //Administrador
+    servicioReportes: '/servicio/reportes',
+
+
+
     // Lista general de reportes
     reportes: '/tecnicos/reportes',
     detalles: '/tecnicos/reportes/:id',

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { UserPlus, Pencil, Trash2, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import Loading from "../../components/Loading";
 import Pagination from "../../components/Pagination";
 import Modal from "../../components/ui/Modal";
@@ -16,6 +17,10 @@ const INITIAL_CLIENTE_STATE = {
   direccion: "",
   celular: "",
   contacto: "",
+  zona: "",
+  departamento: "",
+  provincia: "",
+  distrito: ""
 };
 
 export default function Clientes() {
@@ -34,25 +39,16 @@ export default function Clientes() {
   const [idEliminar, setIdEliminar] = useState(null);
   const [eliminando, setEliminando] = useState(false);
 
-  // --- LÓGICA DE PERSISTENCIA (AUTO-GUARDADO) ---
-  
-  // 1. Recuperar al montar el componente
+  // Limpiar cualquier residuo de formulario temporal al montar para evitar apertura no deseada al actualizar
   useEffect(() => {
-    const datosGuardados = localStorage.getItem('cliente_form_temp');
-    if (datosGuardados) {
-      setClienteSeleccionado(JSON.parse(datosGuardados));
-      setShowModal(true);
-    }
+    localStorage.removeItem('cliente_form_temp');
   }, []);
 
-  // 2. Guardar automáticamente al escribir (mientras el modal esté abierto)
-  useEffect(() => {
-    if (showModal) {
-      localStorage.setItem('cliente_form_temp', JSON.stringify(clienteSeleccionado));
-    }
-  }, [clienteSeleccionado, showModal]);
-
-  // --- FIN LÓGICA DE PERSISTENCIA ---
+  const cerrarModal = () => {
+    setShowModal(false);
+    setClienteSeleccionado(INITIAL_CLIENTE_STATE);
+    localStorage.removeItem('cliente_form_temp');
+  };
 
   const leerServicio = useCallback(async () => {
     setCargando(true);
@@ -89,11 +85,92 @@ export default function Clientes() {
     }
   };
 
+  const handleFormChange = (e) => {
+    if (!e) return;
+    if (e.departamento !== undefined || e.provincia !== undefined || e.distrito !== undefined) {
+      setClienteSeleccionado(prev => ({
+        ...prev,
+        ...(e.departamento !== undefined ? { departamento: e.departamento } : {}),
+        ...(e.provincia !== undefined ? { provincia: e.provincia } : {}),
+        ...(e.distrito !== undefined ? { distrito: e.distrito } : {})
+      }));
+    } else if (e.target) {
+      const { name, value } = e.target;
+      setClienteSeleccionado(prev => ({ ...prev, [name]: value }));
+    } else if (typeof e === 'object') {
+      setClienteSeleccionado(prev => ({ ...prev, ...e }));
+    }
+  };
+
   const guardarCliente = async (e) => {
     if (e) e.preventDefault();
-    setGuardando(true);
+
+    const errores = [];
+    const ruc = String(clienteSeleccionado.ruc || '').trim();
+    if (!/^\d{11}$/.test(ruc)) {
+      errores.push("El RUC debe tener exactamente 11 dígitos numéricos.");
+    }
+    if (!clienteSeleccionado.razon_social?.trim()) {
+      errores.push("La Razón Social es obligatoria.");
+    }
+    const correo = String(clienteSeleccionado.correo || '').trim();
+    if (!correo) {
+      errores.push("El Correo Electrónico es obligatorio.");
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+      errores.push("El formato del correo electrónico es inválido.");
+    }
+    if (!clienteSeleccionado.direccion?.trim()) {
+      errores.push("La Dirección es obligatoria.");
+    }
+    if (!clienteSeleccionado.celular?.trim()) {
+      errores.push("El número de Celular es obligatorio.");
+    }
+    if (!clienteSeleccionado.contacto?.trim()) {
+      errores.push("La Persona de Contacto es obligatoria.");
+    }
+    if (!clienteSeleccionado.zona?.trim()) {
+      errores.push("Debe seleccionar una Zona.");
+    }
+    if (!clienteSeleccionado.departamento?.trim()) {
+      errores.push("Debe seleccionar un Departamento.");
+    }
+    if (!clienteSeleccionado.provincia?.trim()) {
+      errores.push("Debe seleccionar una Provincia.");
+    }
+    if (!clienteSeleccionado.distrito?.trim()) {
+      errores.push("Debe seleccionar un Distrito.");
+    }
+
+    if (errores.length > 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Complete los campos obligatorios',
+        html: `<ul style="text-align: left; font-size: 13px; line-height: 1.6; margin: 8px 0 0 16px; list-style-type: disc;">${errores.map(err => `<li>${err}</li>`).join('')}</ul>`,
+        confirmButtonColor: '#2563eb',
+        confirmButtonText: 'Entendido'
+      });
+      return;
+    }
 
     const esEdicion = !!clienteSeleccionado.id_cliente;
+
+    const confirmacion = await Swal.fire({
+      title: esEdicion ? '¿Actualizar cliente?' : '¿Registrar nuevo cliente?',
+      text: esEdicion
+        ? `¿Está seguro de guardar los cambios para "${clienteSeleccionado.razon_social}"?`
+        : `¿Está seguro de registrar a "${clienteSeleccionado.razon_social}" con RUC ${clienteSeleccionado.ruc}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: esEdicion ? 'Sí, actualizar' : 'Sí, registrar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#2563eb',
+      cancelButtonColor: '#94a3b8',
+      reverseButtons: true
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
+    setGuardando(true);
 
     try {
       let response;
@@ -104,16 +181,23 @@ export default function Clientes() {
       }
 
       if (response.success) {
-        showAlert("success", esEdicion ? "Cliente actualizado exitosamente" : "Cliente registrado exitosamente");
+        Swal.fire({
+          icon: 'success',
+          title: esEdicion ? "Cliente actualizado" : "Cliente registrado",
+          text: esEdicion ? "Los datos se actualizaron correctamente." : "El cliente fue registrado exitosamente.",
+          confirmButtonColor: '#2563eb',
+          timer: 2000
+        });
         setShowModal(false);
         setClienteSeleccionado(INITIAL_CLIENTE_STATE);
         localStorage.removeItem('cliente_form_temp'); // Limpiar al guardar exitosamente
         leerServicio();
       } else {
-        showAlert("error", response.message || "No se pudo guardar el cliente");
+        showAlert("error", response.message || response.error || "No se pudo guardar el cliente");
       }
     } catch (error) {
-      showAlert("error", "Hubo un problema en el servidor");
+      const mensajeError = error?.message || error?.error || error?.response?.data?.message || error?.response?.data?.error || "Hubo un problema al guardar el cliente";
+      showAlert("error", mensajeError);
     } finally {
       setGuardando(false);
     }
@@ -239,12 +323,12 @@ export default function Clientes() {
 
       <Modal 
         isOpen={showModal} 
-        onClose={() => setShowModal(false)} 
+        onClose={cerrarModal} 
         title={clienteSeleccionado.id_cliente ? "Editar Cliente" : "Nuevo Cliente"}
       >
         <ClienteForm
           formData={clienteSeleccionado}
-          onChange={(e) => setClienteSeleccionado({ ...clienteSeleccionado, [e.target.name]: e.target.value })}
+          onChange={handleFormChange}
           onRucChange={handleRucChange}
           isEdit={!!clienteSeleccionado.id_cliente}
           onSubmit={guardarCliente}

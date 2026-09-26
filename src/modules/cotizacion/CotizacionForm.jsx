@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Select from 'react-select';
 import { CheckCircle2, Copy, Plus, Save, Trash2 } from 'lucide-react';
+import Swal from 'sweetalert2';
 import CotizacionService from '../../services/cotizaciones.service.js';
 import { clientService } from '../../services/client.service.js';
 import { equipmentService } from '../../services/equipment.service.js';
@@ -294,58 +295,94 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
     };
 
     const validarFormulario = () => {
+        const errores = [];
         if (!header.idCliente?.value) {
-            return 'Debe seleccionar un cliente';
+            errores.push('Debe seleccionar un Cliente.');
         }
-
         if (!header.tipoPago?.value) {
-            return 'Debe seleccionar el tipo de pago';
+            errores.push('Debe seleccionar el Tipo de pago.');
+        }
+        if (!header.centroCosto?.value) {
+            errores.push('Debe seleccionar el Centro de costo.');
         }
 
-        if (!header.centroCosto?.value) {
-            return 'Debe seleccionar el centro de costo';
+        if (detalles.length === 0) {
+            errores.push('Debe registrar al menos un servicio en la cotización.');
         }
 
         for (let index = 0; index < detalles.length; index++) {
             const detalle = detalles[index];
 
             if (!detalle.idTipoServicio?.value) {
-                return `Debe seleccionar el tipo de servicio en la fila ${index + 1}`;
+                errores.push(`Fila ${index + 1}: Debe seleccionar el tipo de servicio.`);
             }
 
             if (
                 !Array.isArray(detalle.idServicios) ||
                 detalle.idServicios.length === 0
             ) {
-                return `Debe seleccionar al menos un subtipo en la fila ${index + 1}`;
+                errores.push(`Fila ${index + 1}: Debe seleccionar al menos un subtipo de servicio.`);
             }
 
-            if (detalle.idServicios.some(servicio => (
+            if (detalle.idServicios?.some(servicio => (
                 servicio.precio === '' || servicio.precio === null
                 || !Number.isFinite(Number(servicio.precio)) || Number(servicio.precio) < 0
             ))) {
-                return `Ingrese un precio válido para cada subtipo en la fila ${index + 1}`;
+                errores.push(`Fila ${index + 1}: Ingrese un precio numérico válido (mayor o igual a 0) para cada subtipo.`);
             }
         }
 
         if (header.movilidad !== '' && (!Number.isFinite(Number(header.movilidad)) || Number(header.movilidad) < 0)) {
-            return 'El costo adicional debe ser un monto válido';
+            errores.push('El costo adicional / movilidad debe ser un monto válido (≥ 0).');
         }
 
-        return null;
+        return errores;
     };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
 
-        const errorValidacion = validarFormulario();
+        const errores = validarFormulario();
 
-        if (errorValidacion) {
-            setErrorFormulario(errorValidacion);
+        if (errores.length > 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Campos pendientes en la cotización',
+                html: `<p class="mb-2 text-sm text-gray-600">Por favor verifique los siguientes puntos:</p><ul style="text-align: left; margin-left: 20px; list-style-type: disc; font-size: 14px; color: #b91c1c;">${errores.map(e => `<li>${e}</li>`).join('')}</ul>`,
+                confirmButtonColor: '#2563eb',
+                confirmButtonText: 'Entendido'
+            });
+            setErrorFormulario(errores[0]);
             return;
         }
 
         setErrorFormulario('');
+
+        const esEdicion = Boolean(initialData?.id_cotizacion);
+        const subtotal = detalles.reduce((total, detalle) => total + detalle.idServicios.reduce(
+            (sub, servicio) => sub + (Number(servicio.precio) || 0), 0
+        ), 0);
+        const totalCotizacion = subtotal + (Number(header.movilidad) || 0);
+
+        const confirmacion = await Swal.fire({
+            title: esEdicion ? '¿Actualizar cotización?' : '¿Registrar cotización?',
+            html: `
+                <div style="text-align: left; font-size: 14px;">
+                    <p><strong>Cliente:</strong> ${header.idCliente.label}</p>
+                    <p><strong>Tipo de Pago:</strong> ${header.tipoPago.label}</p>
+                    <p><strong>Centro de Costo:</strong> ${header.centroCosto.label}</p>
+                    <p><strong>Total Estimado:</strong> USD $ ${totalCotizacion.toFixed(2)}</p>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: esEdicion ? 'Sí, actualizar' : 'Sí, registrar',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (!confirmacion.isConfirmed) return;
 
         const payload = {
             idCliente: header.idCliente.value,
@@ -375,6 +412,14 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                 response?.data?.data?.numeroCotizacion ||
                 response?.data?.numeroCotizacion;
 
+            await Swal.fire({
+                icon: 'success',
+                title: esEdicion ? '¡Cotización actualizada!' : '¡Cotización creada!',
+                text: numeroCotizacion ? `Cotización N.° ${numeroCotizacion}` : 'Se guardó la cotización correctamente.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+
             onSaveSuccess?.({ response, numeroCotizacion });
 
             setHeader({
@@ -399,6 +444,12 @@ const CotizacionForm = ({ initialData = null, onSaveSuccess }) => {
                 'No se pudo guardar la cotización';
 
             setErrorFormulario(mensaje);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al guardar cotización',
+                text: mensaje,
+                confirmButtonColor: '#2563eb'
+            });
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setGuardando(false);

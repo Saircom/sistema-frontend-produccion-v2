@@ -2,7 +2,7 @@ import React from 'react';
 import Swal from 'sweetalert2';
 import { equipmentService } from '../../../services/equipment.service';
 
-export const EquipoLista = ({ equipos, onEliminar = () => { }, onEditar = () => { } }) => {
+export const EquipoLista = ({ equipos, onEliminar = () => { }, onEditar = () => { }, esBusqueda = false, onLimpiarBusqueda = () => { } }) => {
     const handleDelete = async (id) => {
         const result = await Swal.fire({
             title: '¿Eliminar equipo?',
@@ -38,9 +38,32 @@ export const EquipoLista = ({ equipos, onEliminar = () => { }, onEditar = () => 
     };
 
     if (!equipos || equipos.length === 0) {
+        if (esBusqueda) {
+            return (
+                <div className="text-center p-12 bg-white rounded-3xl border border-gray-200 shadow-sm space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <h3 className="font-bold text-gray-800 text-base">Sin coincidencias de equipos</h3>
+                    <p className="text-xs text-gray-500 max-w-md mx-auto">
+                        No se encontraron equipos de este cliente que coincidan con la marca, modelo o serie buscada.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={onLimpiarBusqueda}
+                        className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                    >
+                        Limpiar filtros
+                    </button>
+                </div>
+            );
+        }
+
         return (
             <div className="text-center p-12 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-                <p className="text-gray-500">No hay equipos registrados para este cliente.</p>
+                <p className="text-gray-500 text-sm">No hay equipos registrados para este cliente.</p>
             </div>
         );
     }

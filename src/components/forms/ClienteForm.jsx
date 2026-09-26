@@ -1,4 +1,13 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
+import UBIGEOS_DATA from "../../data/ubigeos.json";
+
+const DEPARTAMENTOS_FALLBACK = [
+  "AMAZONAS", "ANCASH", "APURIMAC", "AREQUIPA", "AYACUCHO", "CAJAMARCA",
+  "CALLAO", "CUSCO", "HUANCAVELICA", "HUANUCO", "ICA", "JUNIN",
+  "LA LIBERTAD", "LAMBAYEQUE", "LIMA", "LORETO", "MADRE DE DIOS",
+  "MOQUEGUA", "PASCO", "PIURA", "PUNO", "SAN MARTIN", "TACNA",
+  "TUMBES", "UCAYALI"
+];
 
 const ClienteForm = ({
   id,
@@ -9,53 +18,69 @@ const ClienteForm = ({
   isEdit = false,
   loading = false
 }) => {
-
-  const [ubigeos, setUbigeos] = useState({});
-
-  useEffect(() => {
-    fetch("https://free.e-api.net.pe/ubigeos.json")
-      .then(res => res.json())
-      .then(data => setUbigeos(data))
-      .catch(err => console.error(err));
+  const departamentos = useMemo(() => {
+    const keys = Object.keys(UBIGEOS_DATA || {});
+    return keys.length > 0 ? keys.sort() : DEPARTAMENTOS_FALLBACK;
   }, []);
 
-  const departamentos = useMemo(
-    () => Object.keys(ubigeos),
-    [ubigeos]
-  );
+  const depNormalizado = String(formData?.departamento || '').trim().toUpperCase();
+  const provNormalizada = String(formData?.provincia || '').trim().toUpperCase();
 
   const provincias = useMemo(() => {
-    if (!formData.departamento) return [];
-    return Object.keys(
-      ubigeos[formData.departamento] || {}
-    );
-  }, [ubigeos, formData.departamento]);
+    if (!depNormalizado) return [];
+    const provs = UBIGEOS_DATA[depNormalizado];
+    return provs ? Object.keys(provs).sort() : [];
+  }, [depNormalizado]);
 
   const distritos = useMemo(() => {
-    if (!formData.departamento || !formData.provincia) return [];
+    if (!depNormalizado || !provNormalizada) return [];
+    const dists = UBIGEOS_DATA[depNormalizado]?.[provNormalizada];
+    return dists ? Object.keys(dists).sort() : [];
+  }, [depNormalizado, provNormalizada]);
 
-    return Object.keys(
-      ubigeos[formData.departamento]?.[formData.provincia] || {}
-    );
-  }, [ubigeos, formData.departamento, formData.provincia]);
-
-  // Intercepta los cambios y convierte el valor a MAYÚSCULAS
+  // Intercepta los cambios y convierte el valor a MAYÚSCULAS o limpia RUC
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    let finalValue = value;
 
-    const upperEvent = {
+    if (name === "ruc") {
+      finalValue = value.replace(/\D/g, '').slice(0, 11);
+    } else if (name !== "correo") {
+      finalValue = value.toUpperCase();
+    }
+
+    const customEvent = {
       ...e,
       target: {
         ...e.target,
         name,
-        value: value.toUpperCase()
+        value: finalValue
       }
     };
 
+    if (name === "departamento") {
+      onChange({
+        target: { name: "departamento", value: finalValue },
+        departamento: finalValue,
+        provincia: "",
+        distrito: ""
+      });
+      return;
+    }
+
+    if (name === "provincia") {
+      onChange({
+        target: { name: "provincia", value: finalValue },
+        provincia: finalValue,
+        distrito: ""
+      });
+      return;
+    }
+
     if (name === "ruc" && onRucChange) {
-      onRucChange(upperEvent);
+      onRucChange(customEvent);
     } else {
-      onChange(upperEvent);
+      onChange(customEvent);
     }
   };
 
@@ -144,7 +169,7 @@ const ClienteForm = ({
             required={true} // <-- Validación obligatoria activa
             className="w-full p-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 uppercase"
           >
-            <option value="">Seleccione</option>
+            <option value="">Seleccione Departamento</option>
 
             {departamentos.map(dep => (
               <option key={dep} value={dep}>
@@ -165,10 +190,10 @@ const ClienteForm = ({
             value={formData.provincia || ""}
             onChange={handleInputChange}
             required={true} // <-- Validación obligatoria activa
-            disabled={!formData.departamento}
+            disabled={!depNormalizado || provincias.length === 0}
             className="w-full p-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-gray-100 uppercase"
           >
-            <option value="">Seleccione</option>
+            <option value="">{depNormalizado ? "Seleccione Provincia" : "Primero elija departamento"}</option>
 
             {provincias.map(prov => (
               <option key={prov} value={prov}>
@@ -189,10 +214,10 @@ const ClienteForm = ({
             value={formData.distrito || ""}
             onChange={handleInputChange}
             required={true} // <-- Validación obligatoria activa
-            disabled={!formData.provincia}
+            disabled={!provNormalizada || distritos.length === 0}
             className="w-full p-2.5 rounded-xl border border-gray-200 bg-white text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-gray-100 uppercase"
           >
-            <option value="">Seleccione</option>
+            <option value="">{provNormalizada ? "Seleccione Distrito" : "Primero elija provincia"}</option>
 
             {distritos.map(dist => (
               <option key={dist} value={dist}>

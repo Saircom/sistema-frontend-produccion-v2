@@ -49,6 +49,9 @@ import MisViaticos from './viaticos/MisViaticos.jsx';
 import ViaticosAdmin from './viaticos/ViaticosAdmin.jsx';
 
 
+//ADMINISTRAODR
+import ServicioReportes from './reportes/ServicioReportes.jsx'
+
 //INFORME TECNICO
 import InformeTecnicoList from './informe-tecnico/InformeTecnicoList.jsx';
 
@@ -98,6 +101,11 @@ function MyApp() {
             <Route path="/perfil" element={
               <ProtectedRoute allowedRoles={[UserRole.admin, UserRole.planner, UserRole.tecnico, UserRole.postventa, UserRole.almacen]}>
                 <Perfil />
+              </ProtectedRoute>
+            } />
+            <Route path={route.servicioReportes} element={
+              <ProtectedRoute allowedRoles={[UserRole.admin, UserRole.planner, UserRole.postventa]}>
+                <ServicioReportes />
               </ProtectedRoute>
             } />
 
@@ -277,7 +285,7 @@ function MyApp() {
             <Route path="/tecnicos/reportes/:id_servicio/firma" element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.tecnico, UserRole.postventa, UserRole.planner]}><GestionarFirma /></ProtectedRoute>} />
             <Route path={route.equipoestacionario} element={<ProtectedRoute allowedRoles={[UserRole.tecnico, UserRole.admin, UserRole.planner]}><ReportEstacionario /></ProtectedRoute>} />
             <Route path={route.equipoportatil} element={<ProtectedRoute allowedRoles={[UserRole.tecnico, UserRole.admin, UserRole.planner]}><ReportSecador /></ProtectedRoute>} />
-            <Route path={route.historialtiempos} element={<ProtectedRoute allowedRoles={[UserRole.postventa, UserRole.admin, UserRole.planner]}><ServicioTiempos /></ProtectedRoute>} />
+            <Route path={route.historialtiempos} element={<ProtectedRoute allowedRoles={[UserRole.admin, UserRole.planner]}><ServicioTiempos /></ProtectedRoute>} />
             <Route path={route.usuarios} element={<ProtectedRoute allowedRoles={[UserRole.admin]}><Usuarios /></ProtectedRoute>} />
             <Route path="/notificacion" element={<ProtectedRoute allowedRoles={[UserRole.admin]}><Notificaciones /></ProtectedRoute>} />
             <Route path={route.dashboardadministrador} element={<ProtectedRoute allowedRoles={[UserRole.admin]}><DashboardAdministrador /></ProtectedRoute>} />

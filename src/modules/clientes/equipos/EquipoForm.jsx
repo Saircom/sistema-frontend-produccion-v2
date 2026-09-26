@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { equipmentService } from '../../../services/equipment.service';
 import { useAlert } from '../../../context/AlertContext';
+import Swal from 'sweetalert2';
 
 const VACIO = {
   tipo_equipo: '',
@@ -55,11 +56,56 @@ const EquipoForm = ({ idCliente, marcas = [], onSuccess, equipoAEditar = null })
 
   const handleSubmit = async event => {
     event.preventDefault();
-    const obligatorios = ['id_marca', 'tipo_equipo', 'modelo', 'serie', 'encargado_equipo'];
-    if (obligatorios.some(campo => !String(formData[campo] || '').trim())) {
-      showAlert('Atención', 'Completa marca, modelo, serie, tipo de equipo y encargado.', 'warning');
+
+    const errores = [];
+    if (!String(formData.tipo_equipo || '').trim()) {
+      errores.push('El Tipo de equipo es obligatorio.');
+    }
+    if (!String(formData.id_marca || '').trim()) {
+      errores.push('Debe seleccionar una Marca.');
+    }
+    if (!String(formData.modelo || '').trim()) {
+      errores.push('El Modelo es obligatorio.');
+    }
+    if (!String(formData.serie || '').trim()) {
+      errores.push('El Número de Serie es obligatorio.');
+    }
+    if (!String(formData.encargado_equipo || '').trim()) {
+      errores.push('El Encargado del equipo es obligatorio.');
+    }
+
+    if (errores.length > 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Complete los campos obligatorios',
+        html: `<p class="mb-2 text-sm text-gray-600">Se encontraron los siguientes problemas:</p><ul style="text-align: left; margin-left: 20px; list-style-type: disc; font-size: 14px; color: #b91c1c;">${errores.map(e => `<li>${e}</li>`).join('')}</ul>`,
+        confirmButtonColor: '#2563eb',
+        confirmButtonText: 'Entendido'
+      });
       return;
     }
+
+    const isEditing = Boolean(equipoAEditar?.id_equipo);
+
+    const result = await Swal.fire({
+      title: isEditing ? '¿Actualizar equipo?' : '¿Registrar equipo?',
+      html: `
+        <div style="text-align: left; font-size: 14px;">
+          <p><strong>Tipo:</strong> ${formData.tipo_equipo}</p>
+          <p><strong>Modelo:</strong> ${formData.modelo}</p>
+          <p><strong>Serie:</strong> ${formData.serie}</p>
+          <p><strong>Encargado:</strong> ${formData.encargado_equipo}</p>
+        </div>
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#2563eb',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: isEditing ? 'Sí, actualizar' : 'Sí, registrar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (!result.isConfirmed) return;
 
     setGuardando(true);
     try {
@@ -70,17 +116,27 @@ const EquipoForm = ({ idCliente, marcas = [], onSuccess, equipoAEditar = null })
         codigo_interno: formData.codigo_interno.trim() || 'NO APLICA',
         id_cliente: idCliente
       };
-      const isEditing = Boolean(equipoAEditar?.id_equipo);
       if (isEditing) {
         await equipmentService.updateEquipment(equipoAEditar.id_equipo, payload);
       } else {
         await equipmentService.saveEquipment(payload);
         setFormData(VACIO);
       }
-      showAlert('Éxito', isEditing ? 'Equipo actualizado correctamente' : 'Equipo registrado correctamente', 'success');
+      await Swal.fire({
+        icon: 'success',
+        title: isEditing ? '¡Equipo actualizado!' : '¡Equipo registrado!',
+        text: isEditing ? 'El equipo ha sido actualizado con éxito.' : 'El equipo ha sido registrado con éxito.',
+        timer: 2000,
+        showConfirmButton: false
+      });
       onSuccess?.();
     } catch (error) {
-      showAlert('Error', error?.error || error?.message || 'No se pudo guardar el equipo', 'error');
+      Swal.fire({
+        icon: 'error',
+        title: 'Error al guardar el equipo',
+        text: error?.error || error?.message || 'No se pudo procesar la solicitud',
+        confirmButtonColor: '#2563eb'
+      });
     } finally {
       setGuardando(false);
     }

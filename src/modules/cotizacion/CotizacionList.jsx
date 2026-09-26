@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Search, Cpu, X, Building2 } from 'lucide-react';
 import CotizacionService from '../../services/cotizaciones.service.js';
 import Modal from '../../components/ui/Modal.jsx';
 import { useAuth } from '../../context/authContext.jsx';
@@ -92,6 +93,10 @@ const CotizacionDetalleModal = ({ isOpen, onClose, cotizacion, loading, canEdit,
                             <p className="text-[11px] uppercase tracking-wide text-gray-400 font-medium">Estado</p>
                             <EstadoBadge estado={cotizacion.estado} />
                         </div>
+                        <div>
+                            <p className="text-[11px] uppercase tracking-wide text-gray-400 font-medium">Cotizado por</p>
+                            <p className="text-sm font-semibold text-gray-800">{cotizacion.cotizado_por || cotizacion.creado_por || '—'}</p>
+                        </div>
                         <div><p className="text-[11px] uppercase tracking-wide text-gray-400 font-medium">RUC</p><p className="text-sm font-semibold text-gray-800">{cotizacion.ruc || '—'}</p></div>
                         <div><p className="text-[11px] uppercase tracking-wide text-gray-400 font-medium">Contacto</p><p className="text-sm font-semibold text-gray-800">{cotizacion.contacto || '—'}</p></div>
                         <div><p className="text-[11px] uppercase tracking-wide text-gray-400 font-medium">Celular</p><p className="text-sm font-semibold text-gray-800">{cotizacion.celular || '—'}</p></div>
@@ -183,6 +188,9 @@ const CotizacionList = () => {
     const [cotizaciones, setCotizaciones] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const [busquedaCliente, setBusquedaCliente] = useState('');
+    const [busquedaSerie, setBusquedaSerie] = useState('');
+
     const [isDetalleOpen, setIsDetalleOpen] = useState(false);
     const [detalleCotizacion, setDetalleCotizacion] = useState(null);
     const [detalleLoading, setDetalleLoading] = useState(false);
@@ -190,12 +198,22 @@ const CotizacionList = () => {
     const [error, setError] = useState('');
     const [mensaje, setMensaje] = useState(location.state?.mensaje || '');
 
-    const puedeActualizarEstado = ['POSTVENTA', 'ADMINISTRADOR', 'SUPERADMINISTRADOR'].includes(
-        String(user?.rol ?? '').trim().toUpperCase()
-    );
-    const puedeEditarCotizacion = cotizacion => {
+    const rolActual = String(user?.rol ?? '').trim().toUpperCase();
+    const esAdmin = isSuperAdmin(user) || rolActual === 'ADMINISTRADOR';
+
+    const puedeModificarCotizacion = (cotizacion) => {
+        if (!cotizacion) return false;
+        if (esAdmin) return true;
+        if (rolActual === 'POSTVENTA') {
+            return Number(cotizacion.id_usuario_creador) === Number(user?.id_usuario);
+        }
+        return false;
+    };
+
+    const puedeEditarCotizacion = (cotizacion) => {
+        if (!puedeModificarCotizacion(cotizacion)) return false;
         const estado = String(cotizacion?.estado ?? 'borrador').trim().toLowerCase();
-        return isSuperAdmin(user) || estado === 'borrador';
+        return esAdmin || estado === 'borrador';
     };
 
     const load = async () => {
@@ -208,6 +226,24 @@ const CotizacionList = () => {
     useEffect(() => {
         load();
     }, []);
+
+    const cotizacionesFiltradas = useMemo(() => {
+        const qCliente = busquedaCliente.trim().toLowerCase();
+        const qSerie = busquedaSerie.trim().toLowerCase();
+
+        return cotizaciones.filter(c => {
+            const matchCliente = !qCliente || (
+                (c.nombre_cliente && c.nombre_cliente.toLowerCase().includes(qCliente)) ||
+                (c.ruc && c.ruc.toLowerCase().includes(qCliente)) ||
+                (c.numero_cotizacion && c.numero_cotizacion.toLowerCase().includes(qCliente))
+            );
+            const matchSerie = !qSerie || (
+                (c.series_equipos && c.series_equipos.toLowerCase().includes(qSerie)) ||
+                (c.modelos_equipos && c.modelos_equipos.toLowerCase().includes(qSerie))
+            );
+            return matchCliente && matchSerie;
+        });
+    }, [cotizaciones, busquedaCliente, busquedaSerie]);
 
     const handleRowClick = async (cotizacionResumen) => {
         setIsDetalleOpen(true);
@@ -240,7 +276,7 @@ const CotizacionList = () => {
     };
 
     const handleEstadoChange = async (cotizacion, estado) => {
-        if (!puedeActualizarEstado || estado === cotizacion.estado) return;
+        if (!puedeModificarCotizacion(cotizacion) || estado === cotizacion.estado) return;
 
         try {
             setActualizandoId(cotizacion.id_cotizacion);
@@ -276,18 +312,75 @@ const CotizacionList = () => {
     };
 
     return (
-        <div className="p-4 max-w-8xl mx-auto">
-            <div className="flex justify-between items-center mb-4">
+        <div className="p-2 sm:p-4 max-w-8xl mx-auto space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                    <h1 className="text-xl font-bold text-gray-800">Cotizaciones</h1>
-                    <p className="text-sm text-gray-400">{cotizaciones.length} registro(s)</p>
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Cotizaciones</h1>
+                    <p className="text-xs sm:text-sm text-gray-400">
+                        {cotizacionesFiltradas.length} de {cotizaciones.length} registro(s) encontrados
+                    </p>
                 </div>
                 <button
                     onClick={() => navigate('/postventa/cotizacion/nueva')}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm text-sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium shadow-sm text-sm self-start sm:self-auto"
                 >
                     + Nueva Cotización
                 </button>
+            </div>
+
+            {/* BARRA DE BÚSQUEDA POR CLIENTE Y SERIE */}
+            <div className="bg-white border border-gray-200 rounded-xl p-3 sm:p-4 shadow-sm space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="relative">
+                        <Building2 size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            value={busquedaCliente}
+                            onChange={(e) => setBusquedaCliente(e.target.value)}
+                            placeholder="Buscar por cliente o N° de cotización..."
+                            className="w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-gray-50/50"
+                        />
+                        {busquedaCliente && (
+                            <button
+                                onClick={() => setBusquedaCliente('')}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                                <X size={16} />
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="relative">
+                        <Cpu size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            value={busquedaSerie}
+                            onChange={(e) => setBusquedaSerie(e.target.value)}
+                            placeholder="Buscar por número de serie de máquina..."
+                            className="w-full pl-10 pr-8 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-gray-50/50 font-mono text-xs sm:text-sm"
+                        />
+                        {busquedaSerie && (
+                            <button
+                                onClick={() => setBusquedaSerie('')}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                                <X size={16} />
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {(busquedaCliente || busquedaSerie) && (
+                    <div className="flex items-center justify-between text-xs text-gray-500 pt-1 border-t border-gray-100">
+                        <span>Filtros activos: {busquedaCliente ? `Cliente "${busquedaCliente}" ` : ''} {busquedaSerie ? `Serie "${busquedaSerie}"` : ''}</span>
+                        <button
+                            onClick={() => { setBusquedaCliente(''); setBusquedaSerie(''); }}
+                            className="text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                            Limpiar filtros
+                        </button>
+                    </div>
+                )}
             </div>
 
             <CotizacionDetalleModal
@@ -303,77 +396,100 @@ const CotizacionList = () => {
             />
 
             {mensaje && (
-                <div role="status" className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                <div role="status" className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
                     {mensaje}
                 </div>
             )}
 
             {error && (
-                <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                     {error}
                 </div>
             )}
 
             {loading ? (
                 <div className="text-center py-10 text-gray-400 text-sm">Cargando datos...</div>
-            ) : cotizaciones.length === 0 ? (
-                <div className="text-center py-10 text-gray-400 text-sm border border-dashed border-gray-200 rounded-lg">
-                    No hay cotizaciones registradas.
+            ) : cotizacionesFiltradas.length === 0 ? (
+                <div className="text-center py-10 text-gray-400 text-sm border border-dashed border-gray-200 rounded-lg bg-white">
+                    {cotizaciones.length === 0 ? 'No hay cotizaciones registradas.' : 'No se encontraron cotizaciones con los filtros aplicados.'}
                 </div>
             ) : (
-                <div className="overflow-hidden shadow-sm border border-gray-200 rounded-xl">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="text-[11px] text-gray-400 uppercase bg-gray-50 border-b border-gray-200 tracking-wide">
-                            <tr>
-                                <th className="px-4 py-3">N° Cotización</th>
-                                <th className="px-4 py-3">Cliente</th>
-                                <th className="px-4 py-3">Tipo Pago</th>
-                                <th className="px-4 py-3">C. de Costo</th>
-                                <th className="px-4 py-3">Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {cotizaciones.map((c) => (
-                                <tr
-                                    key={c.id_cotizacion}
-                                    onClick={() => handleRowClick(c)}
-                                    className="hover:bg-blue-50/60 cursor-pointer transition-colors"
-                                >
-                                    <td className="px-4 py-3 font-medium text-gray-800">{c.numero_cotizacion}</td>
-                                    <td className="px-4 py-3 text-gray-700">{c.nombre_cliente}</td>
-                                    <td className="px-4 py-3 text-gray-500 capitalize">{c.tipo_pago || '—'}</td>
-                                    <td className="px-4 py-3 text-gray-500 capitalize">{c.centro_costo || '—'}</td>
-                                    <td className="px-4 py-3">
-                                        {puedeActualizarEstado ? (
-                                            <select
-                                                value={String(c.estado || 'borrador').toLowerCase()}
-                                                onClick={(event) => event.stopPropagation()}
-                                                onChange={(event) => {
-                                                    event.stopPropagation();
-                                                    handleEstadoChange(c, event.target.value);
-                                                }}
-                                                disabled={actualizandoId === c.id_cotizacion}
-                                                aria-label={`Estado de la cotización ${c.numero_cotizacion}`}
-                                                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm capitalize text-gray-700 disabled:cursor-wait disabled:opacity-60"
-                                            >
-                                                {ESTADOS_COTIZACION.map(estado => (
-                                                    <option
-                                                        key={estado}
-                                                        value={estado}
-                                                        disabled={!puedeTransicionar(c.estado, estado, isSuperAdmin(user))}
-                                                    >
-                                                        {estado}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        ) : (
-                                            <EstadoBadge estado={c.estado} />
-                                        )}
-                                    </td>
+                <div className="overflow-hidden shadow-sm border border-gray-200 rounded-xl bg-white">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[700px]">
+                            <thead className="text-[11px] text-gray-400 uppercase bg-gray-50 border-b border-gray-200 tracking-wide">
+                                <tr>
+                                    <th className="px-4 py-3">N° Cotización</th>
+                                    <th className="px-4 py-3">Cliente</th>
+                                    <th className="px-4 py-3">Serie(s) de Máquina</th>
+                                    <th className="px-4 py-3">Tipo Pago</th>
+                                    <th className="px-4 py-3">C. de Costo</th>
+                                    <th className="px-4 py-3">Estado</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 text-sm">
+                                {cotizacionesFiltradas.map((c) => (
+                                    <tr
+                                        key={c.id_cotizacion}
+                                        onClick={() => handleRowClick(c)}
+                                        className="hover:bg-blue-50/60 cursor-pointer transition-colors"
+                                    >
+                                        <td className="px-4 py-3 font-semibold text-gray-800 whitespace-nowrap">
+                                            <div>{c.numero_cotizacion}</div>
+                                            {c.cotizado_por && (
+                                                <div className="text-xs text-gray-400 font-normal">
+                                                    Por: {c.cotizado_por}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-700">
+                                            <p className="font-medium text-gray-900">{c.nombre_cliente || '—'}</p>
+                                            {c.ruc && <p className="text-xs text-gray-400 font-mono">RUC: {c.ruc}</p>}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {c.series_equipos ? (
+                                                <span className="inline-flex items-center gap-1 font-mono text-xs px-2.5 py-1 rounded-md bg-slate-100 text-slate-800 border border-slate-200 font-semibold" title={c.modelos_equipos ? `Modelos: ${c.modelos_equipos}` : ''}>
+                                                    <Cpu size={12} className="text-slate-500" />
+                                                    {c.series_equipos}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-gray-400 italic">Sin equipo</span>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-500 capitalize whitespace-nowrap">{c.tipo_pago || '—'}</td>
+                                        <td className="px-4 py-3 text-gray-500 capitalize whitespace-nowrap">{c.centro_costo || '—'}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap">
+                                            {puedeModificarCotizacion(c) ? (
+                                                <select
+                                                    value={String(c.estado || 'borrador').toLowerCase()}
+                                                    onClick={(event) => event.stopPropagation()}
+                                                    onChange={(event) => {
+                                                        event.stopPropagation();
+                                                        handleEstadoChange(c, event.target.value);
+                                                    }}
+                                                    disabled={actualizandoId === c.id_cotizacion}
+                                                    aria-label={`Estado de la cotización ${c.numero_cotizacion}`}
+                                                    className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs sm:text-sm capitalize text-gray-700 disabled:cursor-wait disabled:opacity-60"
+                                                >
+                                                    {ESTADOS_COTIZACION.map(estado => (
+                                                        <option
+                                                            key={estado}
+                                                            value={estado}
+                                                            disabled={!puedeTransicionar(c.estado, estado, isSuperAdmin(user))}
+                                                        >
+                                                            {estado}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <EstadoBadge estado={c.estado} />
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
         </div>

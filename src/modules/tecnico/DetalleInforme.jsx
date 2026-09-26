@@ -826,9 +826,20 @@ export const DetalleInforme = () => {
                     )}
 
                     {informeFinalizado && (
-                        <span className={`rounded-lg border px-4 py-2 text-sm font-semibold ${informeRevisado ? 'border-green-200 bg-green-50 text-green-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
-                            {informeRevisado ? 'Revisado y bloqueado' : 'Pendiente de revisión · aún editable'}: {formatearFecha(informe.fecha_finalizacion)}
-                        </span>
+                        <>
+                            <span className={`rounded-lg border px-4 py-2 text-sm font-semibold ${informeRevisado ? 'border-green-200 bg-green-50 text-green-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
+                                {informeRevisado ? 'Revisado y bloqueado' : 'Pendiente de revisión · aún editable'}: {formatearFecha(informe.fecha_finalizacion)}
+                            </span>
+                            <span className={`rounded-lg border px-4 py-2 text-sm font-semibold ${
+                                String(informe.estado_envio).toLowerCase() === 'enviado'
+                                    ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                                    : 'border-slate-300 bg-slate-100 text-slate-700'
+                            }`}>
+                                {String(informe.estado_envio).toLowerCase() === 'enviado'
+                                    ? `Enviado al cliente: ${formatearFecha(informe.fecha_envio)}`
+                                    : 'Sin enviar al cliente'}
+                            </span>
+                        </>
                     )}
 
                     {/* Usamos user?.rol en lugar de la variable no definida 'usuario' */}
